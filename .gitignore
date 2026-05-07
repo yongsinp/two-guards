@@ -1,10 +1,15 @@
 ### Project
 /data/*
 !/data/.gitkeep
+!/data/input/
 /models/*
 !/models/.gitkeep
 __pycache__/
 *.pyc
+*.egg-info/
+
+### Pixi
+.pixi/
 
 ### IntelliJ
 # IntelliJ project files

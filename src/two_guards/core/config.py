@@ -1,0 +1,77 @@
+"""Configuration dataclasses and YAML loader."""
+
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
+
+
+_DEFAULT_CONFIG_PATH = Path(__file__).parents[3] / "config" / "default.yaml"
+
+
+@dataclass
+class ThinkingConfig:
+    """Reasoning settings.
+
+    Attributes:
+        budget_tokens: Maximum tokens to allocate for the reasoning trace.
+    """
+
+    budget_tokens: int = 8000
+
+
+@dataclass
+class ModelConfig:
+    """Per-role model names using litellm's canonical format (provider/model).
+
+    Each role can point to a different model or provider without code changes.
+    """
+
+    liar: str = "anthropic/claude-sonnet-4-6"
+    verifier: str = "anthropic/claude-sonnet-4-6"
+    generator: str = "anthropic/claude-sonnet-4-6"
+    summarizer: str = "anthropic/claude-sonnet-4-6"
+    tamperer: str = "anthropic/claude-sonnet-4-6"
+    locator: str = "anthropic/claude-sonnet-4-6"
+    judge: str = "anthropic/claude-sonnet-4-6"
+
+
+@dataclass
+class Config:
+    """Top-level project configuration.
+
+    Attributes:
+        input_dir: Directory containing source .txt documents.
+        output_dir: Root directory for JSONL output files.
+        models: Per-role model assignments.
+        thinking: Reasoning settings.
+    """
+
+    input_dir: str = "data/input"
+    output_dir: str = "data"
+    models: ModelConfig = field(default_factory=ModelConfig)
+    thinking: ThinkingConfig = field(default_factory=ThinkingConfig)
+
+
+def load_config(path: Path | None = None) -> Config:
+    """Load configuration from a YAML file.
+
+    Args:
+        path: Path to the YAML config file. Defaults to
+            ``config/default.yaml`` relative to the project root.
+
+    Returns:
+        Populated Config instance.
+    """
+    path = path or _DEFAULT_CONFIG_PATH
+    with open(path) as f:
+        raw = yaml.safe_load(f)
+
+    models = ModelConfig(**raw.get("models", {}))
+    thinking = ThinkingConfig(**raw.get("thinking", {}))
+    return Config(
+        input_dir=raw.get("input_dir", "data/input"),
+        output_dir=raw.get("output_dir", "data"),
+        models=models,
+        thinking=thinking,
+    )

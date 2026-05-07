@@ -1,0 +1,14 @@
+input_dir: "data/input"
+output_dir: "data"
+
+models:
+  liar: "anthropic/claude-sonnet-4-6"
+  verifier: "anthropic/claude-sonnet-4-6"
+  generator: "anthropic/claude-sonnet-4-6"
+  summarizer: "anthropic/claude-sonnet-4-6"
+  tamperer: "anthropic/claude-sonnet-4-6"
+  locator: "anthropic/claude-sonnet-4-6"
+  judge: "anthropic/claude-sonnet-4-6"
+
+thinking:
+  budget_tokens: 8000
