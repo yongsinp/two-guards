@@ -1,31 +1,40 @@
 hallucinations:
   - name: "Temporal"
     description: "Time-sensitive errors and anachronisms."
-    example: ""
+    example: "The Build Back Better Act was signed under the Biden presidency in 2017."
+
   - name: "Nonsensical"
     description: "Irrelevant responses lacking logic."
-    example: ""
+    example: "The district court recognized the act was unconstitutional. Cherry blossom season is in the spring."
+
   - name: "Relation"
     description: "Incorrect entity relationships."
-    example: ""
+    example: "The witness Suzie Wilson is the father of James Wilson."
+
   - name: "Overclaim"
     description: "Exaggerated or misrepresented facts."
-    example: ""
+    example: "The case was the most important legal decision of all time."
+
   - name: "Unsubstantiated"
     description: "Claim not found in source text."
-    example: ""
+    example: "Source: Mutual combat is legal in Texas and Washington. Output: Mutual combat is legal in Texas, Washington, and Florida."
+
   - name: "Omission"
     description: "Incomplete extraction."
-    example: ""
+    example: "Source: Party 1 is responsible for recompense of all damages to Party 2, up to $10,000. Output: Party 1 is responsible for recompense of all damages to Party 2."
+
   - name: "Granularity"
     description: "Extracting at the wrong level of specificity — whether by abstracting too broadly or by dropping a legally consequential qualifier."
     example: ""
+
   - name: "Misattribution"
     description: "Names of people, places, dates, or organizations are incorrect."
-    example: ""
+    example: "The first president of the United States was Abraham Lincoln."
+
   - name: "Anchoring "
     description: "Wrong legal provision."
-    example: ""
+    example: "Freedom of speech is protected under the Second Amendment of the US Constitution."
+
   - name: "Duplication"
     description: "Repeated concept."
-    example: ""
+    example: "The district court recognized the act was unconstitutional. The district court recognized the act was unconstitutional."
