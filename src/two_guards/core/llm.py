@@ -1,5 +1,6 @@
 """LLM wrapper around litellm with extended thinking support."""
 
+import json
 from dataclasses import dataclass
 
 import litellm
@@ -17,6 +18,10 @@ class LLMResponse:
 
     content: str
     reasoning: str | None = None
+
+
+class LLMJsonError(Exception):
+    """Raised when the LLM fails to return valid JSON after all retry attempts."""
 
 
 def complete(
@@ -50,3 +55,41 @@ def complete(
     reasoning = response._hidden_params.get("reasoning_content")
 
     return LLMResponse(content=content, reasoning=reasoning)
+
+
+def complete_json(
+    model: str,
+    messages: list[dict],
+    max_attempts: int = 3,
+    thinking: bool = False,
+    budget_tokens: int = 8000,
+) -> tuple[dict, str | None]:
+    """Call an LLM and parse the response as JSON, retrying on parse failures.
+
+    Args:
+        model: litellm model string.
+        messages: OpenAI-style message list.
+        max_attempts: Total number of attempts before raising LLMJsonError.
+        thinking: Whether to enable extended thinking.
+        budget_tokens: Token budget for the thinking block when thinking=True.
+
+    Returns:
+        Tuple of (parsed dict, reasoning string or None).
+
+    Raises:
+        LLMJsonError: If all attempts fail to produce valid JSON.
+    """
+    last_content = ""
+    for _ in range(max_attempts):
+        response = complete(
+            model=model,
+            messages=messages,
+            thinking=thinking,
+            budget_tokens=budget_tokens,
+        )
+        last_content = response.content
+        try:
+            return json.loads(last_content), response.reasoning
+        except json.JSONDecodeError:
+            continue
+    raise LLMJsonError(f"Failed to parse JSON after {max_attempts} attempts. Last response: {last_content!r}")
