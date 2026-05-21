@@ -1,8 +1,6 @@
 """LLM role functions for Plan C (Summarization)."""
 
-import json
-
-from two_guards.core.llm import complete
+from two_guards.core.llm import complete_json
 from two_guards.summarization.prompts import (
     SUMMARIZER_SYSTEM,
     SUMMARIZER_USER,
@@ -15,12 +13,13 @@ from two_guards.summarization.prompts import (
 )
 
 
-def run_summarizer(document_text: str, model: str) -> dict:
+def run_summarizer(document_text: str, model: str, max_attempts: int = 3) -> dict:
     """Generate an accurate summary of a legal document.
 
     Args:
         document_text: The source legal document.
         model: litellm model string.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with key: summary.
@@ -29,16 +28,17 @@ def run_summarizer(document_text: str, model: str) -> dict:
         {"role": "system", "content": SUMMARIZER_SYSTEM},
         {"role": "user", "content": SUMMARIZER_USER.format(document_text=document_text)},
     ]
-    response = complete(model=model, messages=messages, thinking=False)
-    return json.loads(response.content)
+    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
+    return parsed
 
 
-def run_tamperer(summary: str, model: str) -> dict:
+def run_tamperer(summary: str, model: str, max_attempts: int = 3) -> dict:
     """Introduce 1-3 subtle factual errors into an accurate summary.
 
     Args:
         summary: The accurate summary to tamper with.
         model: litellm model string.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: tampered_summary, introduced_errors (list of descriptions).
@@ -47,17 +47,18 @@ def run_tamperer(summary: str, model: str) -> dict:
         {"role": "system", "content": TAMPERER_SYSTEM},
         {"role": "user", "content": TAMPERER_USER.format(summary=summary)},
     ]
-    response = complete(model=model, messages=messages, thinking=False)
-    return json.loads(response.content)
+    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
+    return parsed
 
 
-def run_locator(document_text: str, tampered_summary: str, model: str) -> dict:
+def run_locator(document_text: str, tampered_summary: str, model: str, max_attempts: int = 3) -> dict:
     """Identify factual errors in a summary by comparing it to the source document.
 
     Args:
         document_text: The original source document.
         tampered_summary: The summary that may contain errors.
         model: litellm model string.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with key: located_errors (list of descriptions, may be empty).
@@ -69,17 +70,18 @@ def run_locator(document_text: str, tampered_summary: str, model: str) -> dict:
             tampered_summary=tampered_summary,
         )},
     ]
-    response = complete(model=model, messages=messages, thinking=False)
-    return json.loads(response.content)
+    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
+    return parsed
 
 
-def run_judge(introduced_errors: list[str], located_errors: list[str], model: str) -> dict:
+def run_judge(introduced_errors: list[str], located_errors: list[str], model: str, max_attempts: int = 3) -> dict:
     """Determine whether the locator found all introduced errors.
 
     Args:
         introduced_errors: Descriptions of errors intentionally introduced.
         located_errors: Descriptions of errors the locator reported.
         model: litellm model string.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: all_errors_found, reasoning.
@@ -91,5 +93,5 @@ def run_judge(introduced_errors: list[str], located_errors: list[str], model: st
             located_errors="\n".join(f"- {e}" for e in located_errors),
         )},
     ]
-    response = complete(model=model, messages=messages, thinking=False)
-    return json.loads(response.content)
+    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
+    return parsed

@@ -1,7 +1,5 @@
-import json
 from unittest.mock import patch
 
-from two_guards.core.llm import LLMResponse
 from two_guards.core.loader import Document
 from two_guards.core.config import Config, ModelConfig, ThinkingConfig
 from two_guards.summarization.roles import (
@@ -14,9 +12,9 @@ from two_guards.summarization.pipeline import run
 
 
 def test_run_summarizer():
-    resp_json = json.dumps({"summary": "The court awarded $50,000 in damages."})
-    with patch("two_guards.summarization.roles.complete") as mock:
-        mock.return_value = LLMResponse(content=resp_json, reasoning=None)
+    resp_dict = {"summary": "The court awarded $50,000 in damages."}
+    with patch("two_guards.summarization.roles.complete_json") as mock:
+        mock.return_value = (resp_dict, None)
         result = run_summarizer(
             document_text="Full document text...",
             model="anthropic/claude-sonnet-4-5",
@@ -26,12 +24,12 @@ def test_run_summarizer():
 
 
 def test_run_tamperer():
-    resp_json = json.dumps({
+    resp_dict = {
         "tampered_summary": "The court awarded $75,000 in damages.",
         "introduced_errors": ["Changed damages from $50,000 to $75,000"],
-    })
-    with patch("two_guards.summarization.roles.complete") as mock:
-        mock.return_value = LLMResponse(content=resp_json, reasoning=None)
+    }
+    with patch("two_guards.summarization.roles.complete_json") as mock:
+        mock.return_value = (resp_dict, None)
         result = run_tamperer(
             summary="The court awarded $50,000 in damages.",
             model="anthropic/claude-sonnet-4-5",
@@ -42,11 +40,11 @@ def test_run_tamperer():
 
 
 def test_run_locator():
-    resp_json = json.dumps({
+    resp_dict = {
         "located_errors": ["Damages amount is incorrect — should be $50,000 not $75,000"],
-    })
-    with patch("two_guards.summarization.roles.complete") as mock:
-        mock.return_value = LLMResponse(content=resp_json, reasoning=None)
+    }
+    with patch("two_guards.summarization.roles.complete_json") as mock:
+        mock.return_value = (resp_dict, None)
         result = run_locator(
             document_text="The court awarded $50,000 in damages.",
             tampered_summary="The court awarded $75,000 in damages.",
@@ -57,12 +55,12 @@ def test_run_locator():
 
 
 def test_run_judge():
-    resp_json = json.dumps({
+    resp_dict = {
         "all_errors_found": True,
         "reasoning": "The fact-checker identified the damages amount error.",
-    })
-    with patch("two_guards.summarization.roles.complete") as mock:
-        mock.return_value = LLMResponse(content=resp_json, reasoning=None)
+    }
+    with patch("two_guards.summarization.roles.complete_json") as mock:
+        mock.return_value = (resp_dict, None)
         result = run_judge(
             introduced_errors=["Changed $50,000 to $75,000"],
             located_errors=["Damages should be $50,000 not $75,000"],
