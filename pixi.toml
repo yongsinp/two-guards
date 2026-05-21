@@ -18,6 +18,9 @@ pyyaml = "*"
 pytest = "*"
 pytest-asyncio = "*"
 
+[feature.dev.tasks]
+test = "python -m pytest tests/ -v"
+
 [environments]
 default = { features = [], solve-group = "default" }
 dev = { features = ["dev"], solve-group = "default" }
