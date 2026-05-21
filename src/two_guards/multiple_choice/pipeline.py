@@ -1,24 +1,24 @@
 """Plan B pipeline: Multiple Choice (Generators → Assemble → Judge)."""
 
-import json
 import random
 from datetime import datetime, timezone
 
 from two_guards.core.config import Config
-from two_guards.core.llm import complete
+from two_guards.core.llm import complete_json
 from two_guards.core.loader import Document
 from two_guards.core.writer import write_record
 from two_guards.multiple_choice.roles import run_generator, run_judge
 from two_guards.multiple_choice.prompts import TRUE_OPTION_SYSTEM, TRUE_OPTION_USER
 
 
-def run_true_option(document_text: str, question: str, model: str) -> dict:
+def run_true_option(document_text: str, question: str, model: str, max_attempts: int = 3) -> dict:
     """Generate the factually correct answer for a given question and document.
 
     Args:
         document_text: The source legal document.
         question: The question to answer.
         model: litellm model string.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: true_option, question.
@@ -30,8 +30,8 @@ def run_true_option(document_text: str, question: str, model: str) -> dict:
             question=question,
         )},
     ]
-    response = complete(model=model, messages=messages, thinking=False)
-    return json.loads(response.content)
+    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
+    return parsed
 
 
 def run(config: Config, documents: list[Document], hallucination_types: list[str]) -> None:
@@ -59,6 +59,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
                 hallucination_type=h_type,
                 model=config.models.generator,
                 budget_tokens=config.thinking.budget_tokens,
+                max_attempts=config.retries.max_attempts,
             )
             generated.append(result)
             if question is None:
@@ -71,6 +72,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             document_text=doc.text,
             question=question,
             model=config.models.judge,
+            max_attempts=config.retries.max_attempts,
         )
 
         options = []
@@ -96,6 +98,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             question=question,
             options=option_texts,
             model=config.models.judge,
+            max_attempts=config.retries.max_attempts,
         )
 
         choice_idx = judge_result["choice_index"]

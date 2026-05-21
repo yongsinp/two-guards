@@ -1,7 +1,6 @@
 import json
 from unittest.mock import patch
 
-from two_guards.core.llm import LLMResponse
 from two_guards.core.loader import Document
 from two_guards.core.config import Config, ModelConfig, ThinkingConfig
 from two_guards.multiple_choice.roles import run_generator, run_judge
@@ -9,15 +8,12 @@ from two_guards.multiple_choice.pipeline import run
 
 
 def test_run_generator_returns_parsed_output():
-    gen_json = json.dumps({
+    gen_dict = {
         "fabricated_option": "The statute of limitations is 5 years.",
         "question": "What is the statute of limitations?",
-    })
-    with patch("two_guards.multiple_choice.roles.complete") as mock:
-        mock.return_value = LLMResponse(
-            content=gen_json,
-            reasoning="I changed 3 years to 5 years.",
-        )
+    }
+    with patch("two_guards.multiple_choice.roles.complete_json") as mock:
+        mock.return_value = (gen_dict, "I changed 3 years to 5 years.")
         result = run_generator(
             document_text="The statute of limitations is 3 years.",
             hallucination_type="numerical_error",
@@ -31,12 +27,12 @@ def test_run_generator_returns_parsed_output():
 
 
 def test_run_judge_returns_parsed_output():
-    judge_json = json.dumps({
+    judge_dict = {
         "choice_index": 2,
         "reasoning": "Option 2 matches the document.",
-    })
-    with patch("two_guards.multiple_choice.roles.complete") as mock:
-        mock.return_value = LLMResponse(content=judge_json, reasoning=None)
+    }
+    with patch("two_guards.multiple_choice.roles.complete_json") as mock:
+        mock.return_value = (judge_dict, None)
         result = run_judge(
             document_text="The statute of limitations is 3 years.",
             question="What is the statute of limitations?",

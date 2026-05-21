@@ -1,8 +1,6 @@
 """LLM role functions for Plan B (Multiple Choice)."""
 
-import json
-
-from two_guards.core.llm import complete
+from two_guards.core.llm import complete_json
 from two_guards.multiple_choice.prompts import (
     GENERATOR_SYSTEM,
     GENERATOR_USER,
@@ -16,6 +14,7 @@ def run_generator(
     hallucination_type: str,
     model: str,
     budget_tokens: int,
+    max_attempts: int = 3,
 ) -> dict:
     """Generate one plausible but incorrect answer option for a document.
 
@@ -27,6 +26,7 @@ def run_generator(
             Determines which prompt template is used.
         model: litellm model string.
         budget_tokens: Token budget for the thinking trace.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: fabricated_option, question, reasoning.
@@ -38,9 +38,14 @@ def run_generator(
             hallucination_type=hallucination_type,
         )},
     ]
-    response = complete(model=model, messages=messages, thinking=True, budget_tokens=budget_tokens)
-    parsed = json.loads(response.content)
-    parsed["reasoning"] = response.reasoning
+    parsed, reasoning = complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        budget_tokens=budget_tokens,
+    )
+    parsed["reasoning"] = reasoning
     return parsed
 
 
@@ -49,6 +54,7 @@ def run_judge(
     question: str,
     options: list[str],
     model: str,
+    max_attempts: int = 3,
 ) -> dict:
     """Select the correct answer from a list of options based on the document.
 
@@ -57,6 +63,7 @@ def run_judge(
         question: The multiple-choice question.
         options: List of answer option texts (including the true answer).
         model: litellm model string.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: choice_index (0-based), reasoning.
@@ -70,5 +77,5 @@ def run_judge(
             options_text=options_text,
         )},
     ]
-    response = complete(model=model, messages=messages, thinking=False)
-    return json.loads(response.content)
+    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
+    return parsed
