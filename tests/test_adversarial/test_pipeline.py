@@ -9,15 +9,15 @@ from two_guards.adversarial.pipeline import run
 
 
 def test_run_liar_returns_parsed_output():
-    liar_json = json.dumps({
+    liar_response = {
         "response": "The case was decided in 1985.",
         "truth_flag": False,
         "false_claim": "The case was decided in 1985 (actual: 1983).",
-    })
-    with patch("two_guards.adversarial.roles.complete") as mock:
-        mock.return_value = LLMResponse(
-            content=liar_json,
-            reasoning="I will change the year from 1983 to 1985.",
+    }
+    with patch("two_guards.adversarial.roles.complete_json") as mock:
+        mock.return_value = (
+            liar_response,
+            "I will change the year from 1983 to 1985.",
         )
         result = run_liar(
             document_text="The landmark case was decided in 1983.",
@@ -32,15 +32,15 @@ def test_run_liar_returns_parsed_output():
 
 
 def test_run_verifier_returns_parsed_output():
-    verifier_json = json.dumps({
+    verifier_response = {
         "attempted_correction": True,
         "targeted_claim": "The year 1985 is incorrect.",
         "response": "The case was actually decided in 1983.",
-    })
-    with patch("two_guards.adversarial.roles.complete") as mock:
-        mock.return_value = LLMResponse(
-            content=verifier_json,
-            reasoning="The document says 1983, response says 1985.",
+    }
+    with patch("two_guards.adversarial.roles.complete_json") as mock:
+        mock.return_value = (
+            verifier_response,
+            "The document says 1983, response says 1985.",
         )
         result = run_verifier(
             document_text="The case was decided in 1983.",
@@ -55,12 +55,12 @@ def test_run_verifier_returns_parsed_output():
 
 
 def test_run_judge_returns_parsed_output():
-    judge_json = json.dumps({
+    judge_response = {
         "verifier_correctly_identified": True,
         "reasoning": "Both reference the same date error.",
-    })
-    with patch("two_guards.adversarial.roles.complete") as mock:
-        mock.return_value = LLMResponse(content=judge_json, reasoning=None)
+    }
+    with patch("two_guards.adversarial.roles.complete_json") as mock:
+        mock.return_value = (judge_response, None)
         result = run_judge(
             false_claim="The case was decided in 1985 (actual: 1983).",
             targeted_claim="The year 1985 is incorrect.",

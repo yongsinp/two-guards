@@ -33,6 +33,7 @@ def run(config: Config, documents: list[Document]) -> None:
             truth_flag=truth_flag,
             model=config.models.liar,
             budget_tokens=config.thinking.budget_tokens,
+            max_attempts=config.retries.max_attempts,
         )
 
         verifier_result = run_verifier(
@@ -40,6 +41,7 @@ def run(config: Config, documents: list[Document]) -> None:
             liar_response=liar_result["response"],
             model=config.models.verifier,
             budget_tokens=config.thinking.budget_tokens,
+            max_attempts=config.retries.max_attempts,
         )
 
         if not liar_result["truth_flag"]:
@@ -48,6 +50,7 @@ def run(config: Config, documents: list[Document]) -> None:
                     false_claim=liar_result["false_claim"],
                     targeted_claim=verifier_result["targeted_claim"] or "",
                     model=config.models.judge,
+                    max_attempts=config.retries.max_attempts,
                 )
                 passed = not judge_result["verifier_correctly_identified"]
             else:

@@ -1,8 +1,6 @@
 """LLM role functions for Plan A (Adversarial Conversation)."""
 
-import json
-
-from two_guards.core.llm import complete
+from two_guards.core.llm import complete_json
 from two_guards.adversarial.prompts import (
     LIAR_SYSTEM,
     LIAR_USER,
@@ -18,6 +16,7 @@ def run_liar(
     truth_flag: bool,
     model: str,
     budget_tokens: int,
+    max_attempts: int = 3,
 ) -> dict:
     """Generate a response to a legal document, optionally introducing a falsehood.
 
@@ -28,6 +27,7 @@ def run_liar(
         truth_flag: If False, the model is instructed to introduce one subtle lie.
         model: litellm model string.
         budget_tokens: Token budget for the thinking trace.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: response, truth_flag, false_claim (or None), reasoning.
@@ -39,9 +39,14 @@ def run_liar(
             truth_flag=str(truth_flag).lower(),
         )},
     ]
-    response = complete(model=model, messages=messages, thinking=True, budget_tokens=budget_tokens)
-    parsed = json.loads(response.content)
-    parsed["reasoning"] = response.reasoning
+    parsed, reasoning = complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        budget_tokens=budget_tokens,
+    )
+    parsed["reasoning"] = reasoning
     return parsed
 
 
@@ -50,6 +55,7 @@ def run_verifier(
     liar_response: str,
     model: str,
     budget_tokens: int,
+    max_attempts: int = 3,
 ) -> dict:
     """Fact-check a response against the source document.
 
@@ -60,6 +66,7 @@ def run_verifier(
         liar_response: The response to verify.
         model: litellm model string.
         budget_tokens: Token budget for the thinking trace.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: attempted_correction, targeted_claim (or None),
@@ -72,9 +79,14 @@ def run_verifier(
             liar_response=liar_response,
         )},
     ]
-    response = complete(model=model, messages=messages, thinking=True, budget_tokens=budget_tokens)
-    parsed = json.loads(response.content)
-    parsed["reasoning"] = response.reasoning
+    parsed, reasoning = complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        budget_tokens=budget_tokens,
+    )
+    parsed["reasoning"] = reasoning
     return parsed
 
 
@@ -82,6 +94,7 @@ def run_judge(
     false_claim: str,
     targeted_claim: str,
     model: str,
+    max_attempts: int = 3,
 ) -> dict:
     """Determine whether the verifier correctly identified the liar's false claim.
 
@@ -89,6 +102,7 @@ def run_judge(
         false_claim: The specific claim the liar fabricated.
         targeted_claim: The claim the verifier attempted to correct.
         model: litellm model string.
+        max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: verifier_correctly_identified, reasoning.
@@ -100,5 +114,5 @@ def run_judge(
             targeted_claim=targeted_claim,
         )},
     ]
-    response = complete(model=model, messages=messages, thinking=False)
-    return json.loads(response.content)
+    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
+    return parsed
