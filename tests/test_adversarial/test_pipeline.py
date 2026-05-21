@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from two_guards.core.llm import LLMResponse
 from two_guards.core.loader import Document
-from two_guards.core.config import Config, ModelConfig, ThinkingConfig
+from two_guards.core.config import Config, ModelConfig
 from two_guards.adversarial.roles import run_liar, run_verifier, run_judge
 from two_guards.adversarial.pipeline import run
 
@@ -75,7 +75,7 @@ def test_pipeline_passed_record(tmp_path):
         input_dir=str(tmp_path / "input"),
         output_dir=str(tmp_path / "output"),
         models=ModelConfig(),
-        thinking=ThinkingConfig(budget_tokens=8000),
+        budget_tokens=8000,
     )
     doc = Document(id="doc_001", text="The court ruled in 1983.", source_path="test.txt")
 
@@ -114,7 +114,7 @@ def test_pipeline_failed_record(tmp_path):
         input_dir=str(tmp_path / "input"),
         output_dir=str(tmp_path / "output"),
         models=ModelConfig(),
-        thinking=ThinkingConfig(budget_tokens=8000),
+        budget_tokens=8000,
     )
     doc = Document(id="doc_001", text="The court ruled in 1983.", source_path="test.txt")
 

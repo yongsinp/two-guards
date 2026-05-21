@@ -58,8 +58,8 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
                 document_text=doc.text,
                 hallucination_type=h_type,
                 model=config.models.generator,
-                budget_tokens=config.thinking.budget_tokens,
-                max_attempts=config.retries.max_attempts,
+                budget_tokens=config.budget_tokens,
+                max_attempts=config.max_attempts,
             )
             generated.append(result)
             if question is None:
@@ -72,7 +72,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             document_text=doc.text,
             question=question,
             model=config.models.judge,
-            max_attempts=config.retries.max_attempts,
+            max_attempts=config.max_attempts,
         )
 
         options = []
@@ -98,7 +98,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             question=question,
             options=option_texts,
             model=config.models.judge,
-            max_attempts=config.retries.max_attempts,
+            max_attempts=config.max_attempts,
         )
 
         choice_idx = judge_result["choice_index"]

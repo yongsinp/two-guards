@@ -15,8 +15,8 @@ models:
   tamperer: "anthropic/claude-sonnet-4-6"
   locator: "anthropic/claude-sonnet-4-6"
   judge: "anthropic/claude-sonnet-4-6"
-thinking:
-  budget_tokens: 8000
+budget_tokens: 8000
+max_attempts: 3
 """
     config_file = tmp_path / "config.yaml"
     config_file.write_text(yaml_content)
@@ -27,13 +27,16 @@ thinking:
     assert config.output_dir == "data"
     assert config.models.liar == "anthropic/claude-sonnet-4-6"
     assert config.models.judge == "anthropic/claude-sonnet-4-6"
-    assert config.thinking.budget_tokens == 8000
+    assert config.budget_tokens == 8000
+    assert config.max_attempts == 3
 
 
 def test_config_default_path():
     config = load_config()
     assert config.input_dir is not None
     assert config.models.liar is not None
+    assert config.budget_tokens == 8000
+    assert config.max_attempts == 3
 
 
 def test_load_hallucination_types_from_yaml(tmp_path: Path):
@@ -61,23 +64,3 @@ def test_load_hallucination_types_default_path():
     result = load_hallucination_types()
     assert len(result) > 0
     assert all(isinstance(k, str) and isinstance(v, str) for k, v in result.items())
-
-
-def test_load_config_includes_retry_config(tmp_path: Path):
-    yaml_content = """
-input_dir: "data/input"
-output_dir: "data"
-retries:
-  max_attempts: 5
-"""
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text(yaml_content)
-
-    config = load_config(config_file)
-
-    assert config.retries.max_attempts == 5
-
-
-def test_retry_config_defaults():
-    config = load_config()
-    assert config.retries.max_attempts == 3

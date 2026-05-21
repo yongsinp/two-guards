@@ -11,28 +11,6 @@ _HALLUCINATION_TYPES_PATH = Path(__file__).parents[3] / "config" / "hallucinatio
 
 
 @dataclass
-class ThinkingConfig:
-    """Reasoning settings.
-
-    Attributes:
-        budget_tokens: Maximum tokens to allocate for the reasoning trace.
-    """
-
-    budget_tokens: int = 8000
-
-
-@dataclass
-class RetryConfig:
-    """Retry settings for LLM calls.
-
-    Attributes:
-        max_attempts: Maximum number of attempts before raising an error.
-    """
-
-    max_attempts: int = 3
-
-
-@dataclass
 class ModelConfig:
     """Per-role model names using litellm's canonical format (provider/model).
 
@@ -56,15 +34,15 @@ class Config:
         input_dir: Directory containing source .txt documents.
         output_dir: Root directory for JSONL output files.
         models: Per-role model assignments.
-        thinking: Reasoning settings.
-        retries: Retry settings for LLM calls.
+        budget_tokens: Maximum tokens to allocate for the reasoning trace.
+        max_attempts: Maximum number of JSON parse attempts before raising an error.
     """
 
     input_dir: str = "data/input"
     output_dir: str = "data"
     models: ModelConfig = field(default_factory=ModelConfig)
-    thinking: ThinkingConfig = field(default_factory=ThinkingConfig)
-    retries: RetryConfig = field(default_factory=RetryConfig)
+    budget_tokens: int = 8000
+    max_attempts: int = 3
 
 
 def load_hallucination_types(path: Path | None = None) -> dict[str, str]:
@@ -90,12 +68,10 @@ def load_config(path: Path | None = None) -> Config:
         raw = yaml.safe_load(f)
 
     models = ModelConfig(**raw.get("models", {}))
-    thinking = ThinkingConfig(**raw.get("thinking", {}))
-    retries = RetryConfig(**raw.get("retries", {}))
     return Config(
         input_dir=raw.get("input_dir", "data/input"),
         output_dir=raw.get("output_dir", "data"),
         models=models,
-        thinking=thinking,
-        retries=retries,
+        budget_tokens=raw.get("budget_tokens", 8000),
+        max_attempts=raw.get("max_attempts", 3),
     )

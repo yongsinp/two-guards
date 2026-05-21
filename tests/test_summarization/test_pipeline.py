@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from two_guards.core.loader import Document
-from two_guards.core.config import Config, ModelConfig, ThinkingConfig
+from two_guards.core.config import Config, ModelConfig
 from two_guards.summarization.roles import (
     run_summarizer,
     run_tamperer,
@@ -75,7 +75,7 @@ def test_pipeline_passed_when_locator_misses_error(tmp_path):
         input_dir=str(tmp_path / "input"),
         output_dir=str(tmp_path / "output"),
         models=ModelConfig(),
-        thinking=ThinkingConfig(budget_tokens=8000),
+        budget_tokens=8000,
     )
     doc = Document(id="doc_001", text="The penalty is $10,000 under Section 5.", source_path="test.txt")
 
@@ -108,7 +108,7 @@ def test_pipeline_failed_when_locator_finds_all(tmp_path):
         input_dir=str(tmp_path / "input"),
         output_dir=str(tmp_path / "output"),
         models=ModelConfig(),
-        thinking=ThinkingConfig(budget_tokens=8000),
+        budget_tokens=8000,
     )
     doc = Document(id="doc_001", text="The penalty is $10,000.", source_path="test.txt")
 

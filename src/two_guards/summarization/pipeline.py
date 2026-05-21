@@ -33,27 +33,27 @@ def run(config: Config, documents: list[Document]) -> None:
         summarizer_result = run_summarizer(
             document_text=doc.text,
             model=config.models.summarizer,
-            max_attempts=config.retries.max_attempts,
+            max_attempts=config.max_attempts,
         )
 
         tamperer_result = run_tamperer(
             summary=summarizer_result["summary"],
             model=config.models.tamperer,
-            max_attempts=config.retries.max_attempts,
+            max_attempts=config.max_attempts,
         )
 
         locator_result = run_locator(
             document_text=doc.text,
             tampered_summary=tamperer_result["tampered_summary"],
             model=config.models.locator,
-            max_attempts=config.retries.max_attempts,
+            max_attempts=config.max_attempts,
         )
 
         judge_result = run_judge(
             introduced_errors=tamperer_result["introduced_errors"],
             located_errors=locator_result["located_errors"],
             model=config.models.judge,
-            max_attempts=config.retries.max_attempts,
+            max_attempts=config.max_attempts,
         )
 
         passed = not judge_result["all_errors_found"]
