@@ -1,4 +1,4 @@
-"""Prompt templates for Plan B (Multiple Choice) roles and hallucination type registry."""
+"""Prompt templates for Plan B (Multiple Choice) roles."""
 
 GENERATOR_SYSTEM = """You are an expert at crafting plausible but incorrect legal statements.
 You will be given a legal document and a hallucination type.
@@ -71,5 +71,3 @@ Options:
 {options_text}
 
 Select the correct answer."""
-
-HALLUCINATION_TYPE_REGISTRY: dict[str, str] = {}

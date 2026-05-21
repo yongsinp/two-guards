@@ -7,6 +7,7 @@ import yaml
 
 
 _DEFAULT_CONFIG_PATH = Path(__file__).parents[3] / "config" / "default.yaml"
+_HALLUCINATION_TYPES_PATH = Path(__file__).parents[3] / "config" / "hallucination_types.yaml"
 
 
 @dataclass
@@ -51,6 +52,14 @@ class Config:
     output_dir: str = "data"
     models: ModelConfig = field(default_factory=ModelConfig)
     thinking: ThinkingConfig = field(default_factory=ThinkingConfig)
+
+
+def load_hallucination_types(path: Path | None = None) -> dict[str, str]:
+    """Load hallucination types from YAML, returning a name→description mapping."""
+    path = path or _HALLUCINATION_TYPES_PATH
+    with open(path) as f:
+        raw = yaml.safe_load(f)
+    return {name: entry["description"] for name, entry in raw.items()}
 
 
 def load_config(path: Path | None = None) -> Config:

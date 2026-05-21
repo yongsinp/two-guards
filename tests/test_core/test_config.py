@@ -1,7 +1,6 @@
-import tempfile
 from pathlib import Path
 
-from two_guards.core.config import load_config
+from two_guards.core.config import load_config, load_hallucination_types
 
 
 def test_load_config_from_yaml(tmp_path: Path):
@@ -35,3 +34,30 @@ def test_config_default_path():
     config = load_config()
     assert config.input_dir is not None
     assert config.models.liar is not None
+
+
+def test_load_hallucination_types_from_yaml(tmp_path: Path):
+    yaml_content = """
+Temporal:
+    description: "Time-sensitive errors."
+    example: "An example."
+
+Relation:
+    description: "Incorrect entity relationships."
+    example: "Another example."
+"""
+    types_file = tmp_path / "hallucination_types.yaml"
+    types_file.write_text(yaml_content)
+
+    result = load_hallucination_types(types_file)
+
+    assert result == {
+        "Temporal": "Time-sensitive errors.",
+        "Relation": "Incorrect entity relationships.",
+    }
+
+
+def test_load_hallucination_types_default_path():
+    result = load_hallucination_types()
+    assert len(result) > 0
+    assert all(isinstance(k, str) and isinstance(v, str) for k, v in result.items())
