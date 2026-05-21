@@ -12,3 +12,6 @@ models:
 
 thinking:
   budget_tokens: 8000
+
+retries:
+  max_attempts: 3
