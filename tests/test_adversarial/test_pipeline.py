@@ -1,17 +1,16 @@
-import json
 from unittest.mock import patch
 
-from two_guards.core.llm import LLMResponse
-from two_guards.core.loader import Document
-from two_guards.core.config import Config, ModelConfig
-from two_guards.adversarial.roles import run_liar, run_verifier, run_judge
 from two_guards.adversarial.pipeline import run
+from two_guards.adversarial.roles import run_liar, run_verifier, run_judge
+from two_guards.core.config import Config, ModelConfig
+from two_guards.core.loader import Document
 
 
 def test_run_liar_returns_parsed_output():
     liar_response = {
         "response": "The case was decided in 1985.",
         "truth_flag": False,
+        "hallucination_type": "Temporal",
         "false_claim": "The case was decided in 1985 (actual: 1983).",
     }
     with patch("two_guards.adversarial.roles.complete_json") as mock:
@@ -22,11 +21,17 @@ def test_run_liar_returns_parsed_output():
         result = run_liar(
             document_text="The landmark case was decided in 1983.",
             truth_flag=False,
+            hallucination_type="Temporal",
+            hallucination_type_info={
+                "description": "Time-sensitive errors and anachronisms.",
+                "example": "The Build Back Better Act was signed under the Biden presidency in 2017."
+            },
             model="anthropic/claude-sonnet-4-5",
             budget_tokens=8000,
         )
 
     assert result["truth_flag"] is False
+    assert result["hallucination_type"] == "Temporal"
     assert result["false_claim"] == "The case was decided in 1985 (actual: 1983)."
     assert result["reasoning"] == "I will change the year from 1983 to 1985."
 
@@ -82,6 +87,7 @@ def test_pipeline_passed_record(tmp_path):
     liar_output = {
         "response": "The court ruled in 1985.",
         "truth_flag": False,
+        "hallucination_type": "Temporal",
         "false_claim": "The court ruled in 1985 (actual: 1983).",
         "reasoning": "Changed year.",
     }
@@ -97,10 +103,9 @@ def test_pipeline_passed_record(tmp_path):
     }
 
     with patch("two_guards.adversarial.pipeline.run_liar", return_value=liar_output), \
-         patch("two_guards.adversarial.pipeline.run_verifier", return_value=verifier_output), \
-         patch("two_guards.adversarial.pipeline.run_judge", return_value=judge_output), \
-         patch("two_guards.adversarial.pipeline.write_record") as mock_write:
-
+            patch("two_guards.adversarial.pipeline.run_verifier", return_value=verifier_output), \
+            patch("two_guards.adversarial.pipeline.run_judge", return_value=judge_output), \
+            patch("two_guards.adversarial.pipeline.write_record") as mock_write:
         run(config=config, documents=[doc])
 
         mock_write.assert_called_once()
@@ -121,6 +126,7 @@ def test_pipeline_failed_record(tmp_path):
     liar_output = {
         "response": "The court ruled in 1985.",
         "truth_flag": False,
+        "hallucination_type": "Temporal",
         "false_claim": "The court ruled in 1985.",
         "reasoning": "Changed year.",
     }
@@ -136,10 +142,9 @@ def test_pipeline_failed_record(tmp_path):
     }
 
     with patch("two_guards.adversarial.pipeline.run_liar", return_value=liar_output), \
-         patch("two_guards.adversarial.pipeline.run_verifier", return_value=verifier_output), \
-         patch("two_guards.adversarial.pipeline.run_judge", return_value=judge_output), \
-         patch("two_guards.adversarial.pipeline.write_record") as mock_write:
-
+            patch("two_guards.adversarial.pipeline.run_verifier", return_value=verifier_output), \
+            patch("two_guards.adversarial.pipeline.run_judge", return_value=judge_output), \
+            patch("two_guards.adversarial.pipeline.write_record") as mock_write:
         run(config=config, documents=[doc])
 
         mock_write.assert_called_once()
