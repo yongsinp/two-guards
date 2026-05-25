@@ -24,7 +24,7 @@ Omission:
 
 Granularity:
     description: "Extracting at the wrong level of specificity — whether by abstracting too broadly or by dropping a legally consequential qualifier."
-    example: ""
+    example: "Source: A fraud statute requiring that the defendant 'knowingly made a false representation.' Output: 'A defendant is liable if they made a false representation.'"
 
 Misattribution:
     description: "Names of people, places, dates, or organizations are incorrect."
