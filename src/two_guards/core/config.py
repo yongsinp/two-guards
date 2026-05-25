@@ -45,12 +45,12 @@ class Config:
     max_attempts: int = 3
 
 
-def load_hallucination_types(path: Path | None = None) -> dict[str, str]:
+def load_hallucination_types(path: Path | None = None) -> dict[str, dict[str, str]]:
     """Load hallucination types from YAML, returning a name→description mapping."""
     path = path or _HALLUCINATION_TYPES_PATH
     with open(path) as f:
         raw = yaml.safe_load(f)
-    return {name: entry["description"] for name, entry in raw.items()}
+    return { name: { "description": entry["description"], "example": entry["example"] } for name, entry in raw.items() }
 
 
 def load_config(path: Path | None = None) -> Config:

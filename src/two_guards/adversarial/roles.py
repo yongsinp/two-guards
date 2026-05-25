@@ -1,22 +1,25 @@
 """LLM role functions for Plan A (Adversarial Conversation)."""
 
-from two_guards.core.llm import complete_json
 from two_guards.adversarial.prompts import (
     LIAR_SYSTEM,
     LIAR_USER,
+    LIAR_USER_HALLUCINATION_INFO,
     VERIFIER_SYSTEM,
     VERIFIER_USER,
     JUDGE_SYSTEM,
     JUDGE_USER,
 )
+from two_guards.core.llm import complete_json
 
 
 def run_liar(
-    document_text: str,
-    truth_flag: bool,
-    model: str,
-    budget_tokens: int,
-    max_attempts: int = 3,
+        document_text: str,
+        truth_flag: bool,
+        hallucination_type: str | None,
+        hallucination_type_info: dict[str, str] | None,
+        model: str,
+        budget_tokens: int,
+        max_attempts: int = 3,
 ) -> dict:
     """Generate a response to a legal document, optionally introducing a falsehood.
 
@@ -25,6 +28,8 @@ def run_liar(
     Args:
         document_text: The source legal document.
         truth_flag: If False, the model is instructed to introduce one subtle lie.
+        hallucination_type: The type of hallucination the liar is asked to generate.
+        hallucination_type_info: Information to illustrate the hallucination type (a description and an example).
         model: litellm model string.
         budget_tokens: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
@@ -32,23 +37,30 @@ def run_liar(
     Returns:
         Dict with keys: response, truth_flag, false_claim (or None), reasoning.
     """
+
+    hallucination_info = "" if truth_flag else LIAR_USER_HALLUCINATION_INFO.format(
+        hallucination_type=hallucination_type,
+        hallucination_type_description=hallucination_type_info['description'],
+        hallucination_type_example=hallucination_type_info['example']
+    )
+
     messages = [
         {"role": "system", "content": LIAR_SYSTEM},
         {"role": "user", "content": LIAR_USER.format(
             document_text=document_text,
-            truth_flag=str(truth_flag).lower(),
-        )},
+            truth_flag=str(truth_flag).lower()
+        ) + hallucination_info}
     ]
 
     return fetch_parsed_response(model, messages, budget_tokens, max_attempts)
 
 
 def run_verifier(
-    document_text: str,
-    liar_response: str,
-    model: str,
-    budget_tokens: int,
-    max_attempts: int = 3,
+        document_text: str,
+        liar_response: str,
+        model: str,
+        budget_tokens: int,
+        max_attempts: int = 3,
 ) -> dict:
     """Fact-check a response against the source document.
 
@@ -89,10 +101,10 @@ def fetch_parsed_response(model, messages, budget_tokens, max_attempts):
 
 
 def run_judge(
-    false_claim: str,
-    targeted_claim: str,
-    model: str,
-    max_attempts: int = 3,
+        false_claim: str,
+        targeted_claim: str,
+        model: str,
+        max_attempts: int = 3,
 ) -> dict:
     """Determine whether the verifier correctly identified the liar's false claim.
 

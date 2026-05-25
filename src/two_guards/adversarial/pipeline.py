@@ -3,17 +3,18 @@
 import random
 from datetime import datetime, timezone
 
-from two_guards.core.config import Config
+from two_guards.adversarial.roles import run_liar, run_verifier, run_judge
+from two_guards.core.config import Config, load_hallucination_types
 from two_guards.core.loader import Document
 from two_guards.core.writer import write_record
-from two_guards.adversarial.roles import run_liar, run_verifier, run_judge
 
 
 def run(config: Config, documents: list[Document]) -> None:
     """Run the adversarial conversation pipeline over a list of documents.
 
     For each document:
-    - The Liar responds, randomly choosing to lie or tell the truth.
+    - The Liar responds, randomly choosing to lie or tell the truth. If it lies, it randomly chooses a specific
+      hallucination type.
     - The Verifier attempts to detect any inconsistency.
     - If the Liar lied, a Judge determines whether the Verifier correctly
       identified the specific false claim.
@@ -25,12 +26,18 @@ def run(config: Config, documents: list[Document]) -> None:
         config: Project configuration (model names, paths, thinking budget).
         documents: Source documents to process.
     """
-    for doc in documents:
-        truth_flag = random.choice([True, False])
 
+    hallucination_types = load_hallucination_types()
+    hallucination_types_keys = list(hallucination_types.keys())
+
+    for doc in documents:
+        truth_flag = random.choices([True, False], weights=[0.4, 0.6])
+        hallucination_type = None if truth_flag else random.choice(hallucination_types_keys)
         liar_result = run_liar(
             document_text=doc.text,
             truth_flag=truth_flag,
+            hallucination_type=hallucination_type,
+            hallucination_type_info=None if truth_flag else hallucination_types[hallucination_type],
             model=config.models.liar,
             budget_tokens=config.budget_tokens,
             max_attempts=config.max_attempts,
@@ -74,6 +81,7 @@ def run(config: Config, documents: list[Document]) -> None:
                 "response": liar_result["response"],
                 "reasoning": liar_result["reasoning"],
                 "truth_flag": liar_result["truth_flag"],
+                "hallucination_type": liar_result.get("hallucination_type"),
                 "false_claim": liar_result.get("false_claim"),
             },
             "verifier": {
