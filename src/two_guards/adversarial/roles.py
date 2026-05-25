@@ -39,15 +39,8 @@ def run_liar(
             truth_flag=str(truth_flag).lower(),
         )},
     ]
-    parsed, reasoning = complete_json(
-        model=model,
-        messages=messages,
-        max_attempts=max_attempts,
-        thinking=True,
-        budget_tokens=budget_tokens,
-    )
-    parsed["reasoning"] = reasoning
-    return parsed
+
+    return fetch_parsed_response(model, messages, budget_tokens, max_attempts)
 
 
 def run_verifier(
@@ -79,6 +72,11 @@ def run_verifier(
             liar_response=liar_response,
         )},
     ]
+
+    return fetch_parsed_response(model, messages, budget_tokens, max_attempts)
+
+
+def fetch_parsed_response(model, messages, budget_tokens, max_attempts):
     parsed, reasoning = complete_json(
         model=model,
         messages=messages,
