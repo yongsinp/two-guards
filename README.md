@@ -1,0 +1,24 @@
+# Two Guards
+
+This project utilizes two LLMs to create a dataset of hallucinations based on legal documents. One LLM acts as a liar, making small errors based on a hallucination taxonomy (see next section). The other LLM acts as a verifier, checking the first for incorrect statements.
+## Background
+
+### Hallucination Taxonomy
+These are the types of hallucinations (along with their descriptions and examples) used by the liar LLM.
+
+| Hallucination Type     | Description                                                                                                                        | Example                                                                                                                                                          |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Temporal               | Time-sensitive errors and anachronisms                                                                                             | The Build Back Better Act was signed under the Biden presidency in 2017.                                                                                         |
+| Nonsensical            | Irrelevant responses lacking logic                                                                                                 | The district court recognized the act was unconstitutional. Cherry blossom season is in the spring.                                                              |
+| Relation               | Incorrect entity relationships                                                                                                     | The witness Suzie Wilson is the father of James Wilson.                                                                                                          |
+| Overclaim              | Exaggerated or misrepresented facts                                                                                                | The case was the most important legal decision of all time.                                                                                                      |
+| Unsubstantiated        | Claim not found in source text                                                                                                     | Source: Mutual combat is legal in Texas and Washington. Output: Mutual combat is legal in Texas, Washington, and Florida.                                        |
+| Omission               | Incomplete extraction                                                                                                              | Source: Party 1 is responsible for recompense of all damages to Party 2, up to $10,000. Output: Party 1 is responsible for recompense of all damages to Party 2. |
+| Granularity            | Extracting at the wrong level of specificity — whether by abstracting too broadly or by dropping a legally consequential qualifier | Source: A fraud statute requiring that the defendant 'knowingly made a false representation.' Output: 'A defendant is liable if they made a false representation. |
+| Misattribution         | Names of people, places, dates, or organizations are incorrect                                                                                                                         | The first president of the United States was Abraham Lincoln.                                                                                                    |
+| Anchoring              | Wrong legal provision                                                                                                                                   | Freedom of speech is protected under the Second Amendment of the US Constitution.                                                                                                                                                                 |
+| Duplication            | Repeated concept                                                                                                                                   |  The district court recognized the act was unconstitutional. The district court recognized the act was unconstitutional.                                                                                                                                                                |
+
+## Setup
+
+##
