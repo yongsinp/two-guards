@@ -4,8 +4,8 @@ from two_guards.core.llm import complete_json
 from two_guards.multiple_choice.prompts import (
     GENERATOR_SYSTEM,
     GENERATOR_USER,
-    JUDGE_SYSTEM,
-    JUDGE_USER,
+    VERIFIER_SYSTEM,
+    VERIFIER_USER,
 )
 
 
@@ -29,7 +29,7 @@ def run_generator(
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with keys: fabricated_option, question, reasoning.
+        Dict with keys: fabricated_option, reasoning.
     """
     messages = [
         {"role": "system", "content": GENERATOR_SYSTEM},
@@ -49,9 +49,8 @@ def run_generator(
     return parsed
 
 
-def run_judge(
+def run_verifier(
     document_text: str,
-    question: str,
     options: list[str],
     model: str,
     max_attempts: int = 3,
@@ -60,8 +59,7 @@ def run_judge(
 
     Args:
         document_text: The source legal document.
-        question: The multiple-choice question.
-        options: List of answer option texts (including the true answer).
+        options: List of statement texts (including the true statement).
         model: litellm model string.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
@@ -70,10 +68,9 @@ def run_judge(
     """
     options_text = "\n".join(f"{i}. {opt}" for i, opt in enumerate(options))
     messages = [
-        {"role": "system", "content": JUDGE_SYSTEM},
-        {"role": "user", "content": JUDGE_USER.format(
+        {"role": "system", "content": VERIFIER_SYSTEM},
+        {"role": "user", "content": VERIFIER_USER.format(
             document_text=document_text,
-            question=question,
             options_text=options_text,
         )},
     ]
