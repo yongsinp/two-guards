@@ -32,12 +32,11 @@ def run(config: Config, documents: list[Document]) -> None:
 
     for doc in documents:
         truth_flag = random.choices([True, False], weights=[0.4, 0.6])
-        hallucination_type = None if truth_flag else random.choice(hallucination_types_keys)
         liar_result = run_liar(
             document_text=doc.text,
             truth_flag=truth_flag,
-            hallucination_type=hallucination_type,
-            hallucination_type_info=None if truth_flag else hallucination_types[hallucination_type],
+            hallucination_type=None if truth_flag else random.choice(hallucination_types_keys),
+            hallucination_types=hallucination_types,
             model=config.models.liar,
             budget_tokens=config.budget_tokens,
             max_attempts=config.max_attempts,

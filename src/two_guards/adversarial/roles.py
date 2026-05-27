@@ -16,7 +16,7 @@ def run_liar(
         document_text: str,
         truth_flag: bool,
         hallucination_type: str | None,
-        hallucination_type_info: dict[str, str] | None,
+        hallucination_types: dict[str, dict[str, str]] | None,
         model: str,
         budget_tokens: int,
         max_attempts: int = 3,
@@ -29,7 +29,7 @@ def run_liar(
         document_text: The source legal document.
         truth_flag: If False, the model is instructed to introduce one subtle lie.
         hallucination_type: The type of hallucination the liar is asked to generate.
-        hallucination_type_info: Information to illustrate the hallucination type (a description and an example).
+        hallucination_types: All hallucination types, with a description and an example.
         model: litellm model string.
         budget_tokens: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
@@ -39,13 +39,14 @@ def run_liar(
     """
 
     hallucination_info = "" if truth_flag else LIAR_USER_HALLUCINATION_INFO.format(
-        hallucination_type=hallucination_type,
-        hallucination_type_description=hallucination_type_info['description'],
-        hallucination_type_example=hallucination_type_info['example']
+        hallucination_types=hallucination_type.lower(),
     )
 
     messages = [
-        {"role": "system", "content": LIAR_SYSTEM},
+        {"role": "system", "content": LIAR_SYSTEM.format(
+            hallucination_types='/'.join(hallucination_types.keys()).lower(),
+            hallucination_types_info=str(hallucination_types)
+        )},
         {"role": "user", "content": LIAR_USER.format(
             document_text=document_text,
             truth_flag=str(truth_flag).lower()
