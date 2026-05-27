@@ -68,6 +68,8 @@ def test_run_judge_returns_parsed_output():
     with patch("two_guards.adversarial.roles.complete_json") as mock:
         mock.return_value = (judge_response, None)
         result = run_judge(
+            document_text="The case was decided in 1983.",
+            liar_response="The case was decided in 1985.",
             false_claim="The case was decided in 1985 (actual: 1983).",
             targeted_claim="The year 1985 is incorrect.",
             model="anthropic/claude-sonnet-4-5",
@@ -151,5 +153,3 @@ def test_pipeline_failed_record(tmp_path):
         mock_write.assert_called_once()
         call_kwargs = mock_write.call_args[1]
         assert call_kwargs["passed"] is False
-
-test_run_liar_returns_parsed_output()

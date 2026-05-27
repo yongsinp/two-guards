@@ -53,6 +53,8 @@ def run(config: Config, documents: list[Document]) -> None:
         if not liar_result["truth_flag"]:
             if verifier_result["attempted_correction"] and liar_result["false_claim"]:
                 judge_result = run_judge(
+                    document_text=doc.text,
+                    liar_response=liar_result["response"],
                     false_claim=liar_result["false_claim"],
                     targeted_claim=verifier_result["targeted_claim"] or "",
                     model=config.models.judge,

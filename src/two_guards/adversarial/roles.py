@@ -102,6 +102,8 @@ def fetch_parsed_response(model, messages, budget_tokens, max_attempts):
 
 
 def run_judge(
+        document_text: str,
+        liar_response: str,
         false_claim: str,
         targeted_claim: str,
         model: str,
@@ -110,6 +112,8 @@ def run_judge(
     """Determine whether the verifier correctly identified the liar's false claim.
 
     Args:
+        document_text: The full source legal document.
+        liar_response: The liar's full response.
         false_claim: The specific claim the liar fabricated.
         targeted_claim: The claim the verifier attempted to correct.
         model: litellm model string.
@@ -121,6 +125,8 @@ def run_judge(
     messages = [
         {"role": "system", "content": JUDGE_SYSTEM},
         {"role": "user", "content": JUDGE_USER.format(
+            document_text=document_text,
+            liar_response=liar_response,
             false_claim=false_claim,
             targeted_claim=targeted_claim,
         )},
