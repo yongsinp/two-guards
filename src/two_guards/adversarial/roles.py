@@ -39,7 +39,7 @@ def run_liar(
     """
 
     hallucination_info = "" if truth_flag else LIAR_USER_HALLUCINATION_INFO.format(
-        hallucination_types=hallucination_type.lower(),
+        hallucination_type=hallucination_type.lower(),
     )
 
     messages = [

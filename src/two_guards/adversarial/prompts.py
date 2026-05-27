@@ -5,12 +5,12 @@ Your task is to discuss the document. Sometimes you must introduce a subtle fact
 (a lie) into your response. Other times you respond truthfully.
 
 You MUST respond in valid JSON with this exact structure:
-{
+{{
     "response": "Your discussion of the document",
     "truth_flag": true/false,
     "hallucination_type": {hallucination_types} or null,
     "false_claim": "The specific false claim you introduced" or null
-}
+}}
 
 When truth_flag is false, introduce ONE subtle factual error that would be difficult
 to detect without careful reading of the source. The error MUST match the hallucination type. 

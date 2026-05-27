@@ -22,9 +22,10 @@ def test_run_liar_returns_parsed_output():
             document_text="The landmark case was decided in 1983.",
             truth_flag=False,
             hallucination_type="Temporal",
-            hallucination_type_info={
+            hallucination_types={ "Temporal": {
                 "description": "Time-sensitive errors and anachronisms.",
                 "example": "The Build Back Better Act was signed under the Biden presidency in 2017."
+             }
             },
             model="anthropic/claude-sonnet-4-5",
             budget_tokens=8000,
@@ -150,3 +151,5 @@ def test_pipeline_failed_record(tmp_path):
         mock_write.assert_called_once()
         call_kwargs = mock_write.call_args[1]
         assert call_kwargs["passed"] is False
+
+test_run_liar_returns_parsed_output()
