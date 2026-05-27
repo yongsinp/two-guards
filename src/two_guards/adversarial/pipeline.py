@@ -3,6 +3,8 @@
 import random
 from datetime import datetime, timezone
 
+from tqdm import tqdm
+
 from two_guards.adversarial.roles import run_liar, run_verifier, run_judge
 from two_guards.core.config import Config, load_hallucination_types
 from two_guards.core.loader import Document
@@ -30,7 +32,7 @@ def run(config: Config, documents: list[Document]) -> None:
     hallucination_types = load_hallucination_types()
     hallucination_types_keys = list(hallucination_types.keys())
 
-    for doc in documents:
+    for doc in tqdm(documents):
         truth_flag = random.choices([True, False], weights=[0.4, 0.6])
         liar_result = run_liar(
             document_text=doc.text,

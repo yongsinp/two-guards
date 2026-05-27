@@ -3,6 +3,8 @@
 import random
 from datetime import datetime, timezone
 
+from tqdm import tqdm
+
 from two_guards.core.config import Config
 from two_guards.core.llm import complete_json
 from two_guards.core.loader import Document
@@ -50,7 +52,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
         hallucination_types: List of hallucination type identifiers. One
             generator runs per type, producing one fabricated option each.
     """
-    for doc in documents:
+    for doc in tqdm(documents):
         generated = []
         question = None
         for h_type in hallucination_types:

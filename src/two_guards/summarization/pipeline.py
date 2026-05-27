@@ -2,6 +2,8 @@
 
 from datetime import datetime, timezone
 
+from tqdm import tqdm
+
 from two_guards.core.config import Config
 from two_guards.core.loader import Document
 from two_guards.core.writer import write_record
@@ -29,7 +31,7 @@ def run(config: Config, documents: list[Document]) -> None:
         config: Project configuration (model names, paths, thinking budget).
         documents: Source documents to process.
     """
-    for doc in documents:
+    for doc in tqdm(documents):
         summarizer_result = run_summarizer(
             document_text=doc.text,
             model=config.models.summarizer,
