@@ -55,12 +55,12 @@ Relation:
     result = load_hallucination_types(types_file)
 
     assert result == {
-        "Temporal": "Time-sensitive errors.",
-        "Relation": "Incorrect entity relationships.",
+        "Temporal": {"description": "Time-sensitive errors.", "example": "An example."},
+        "Relation": {"description": "Incorrect entity relationships.", "example": "Another example."},
     }
 
 
 def test_load_hallucination_types_default_path():
     result = load_hallucination_types()
     assert len(result) > 0
-    assert all(isinstance(k, str) and isinstance(v, str) for k, v in result.items())
+    assert all(isinstance(k, str) and isinstance(v, dict) for k, v in result.items())
