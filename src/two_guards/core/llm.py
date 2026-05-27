@@ -89,7 +89,32 @@ def complete_json(
         )
         last_content = response.content
         try:
+            last_content = _get_outermost_dict(last_content)
             return json.loads(last_content), response.reasoning
-        except json.JSONDecodeError:
+        except ValueError:
             continue
     raise LLMJsonError(f"Failed to parse JSON after {max_attempts} attempts. Last response: {last_content!r}")
+
+def _get_outermost_dict(text: str) -> str:
+    """Extracts the outermost list from a string representation of a list.
+
+    Args:
+        text: The string to extract the list from.
+    Returns:
+        The extracted list as a string.
+    Raises:
+        ValueError: If failed to extract the list.
+    """
+
+    start = text.find('{')
+    depth = 0
+
+    for i in range(start, len(text)):
+        if text[i] == '{':
+            depth += 1
+        elif text[i] == '}':
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+
+    raise ValueError("Failed to extract outermost dict from text")
