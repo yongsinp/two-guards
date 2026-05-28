@@ -10,5 +10,5 @@ models:
   locator: "anthropic/claude-sonnet-4-6"
   judge: "anthropic/claude-sonnet-4-6"
 
-budget_tokens: 8000
+reasoning_budget: 8000
 max_attempts: 3
