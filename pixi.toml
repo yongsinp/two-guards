@@ -8,8 +8,8 @@ platforms = ["osx-arm64", "linux-64", "win-64"]
 [dependencies]
 python = ">=3.10"
 pixi-pycharm = ">=0.0.11,<0.0.12"
-pypdf2 = ">=3.0.1,<4"
 pypdf = ">=6.12.2,<7"
+pyspellchecker = ">=0.8.0,<0.9"
 
 [pypi-dependencies]
 two-guards = { path = ".", editable = true }
