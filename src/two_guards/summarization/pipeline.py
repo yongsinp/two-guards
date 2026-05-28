@@ -35,12 +35,14 @@ def run(config: Config, documents: list[Document]) -> None:
         summarizer_result = run_summarizer(
             document_text=doc.text,
             model=config.models.summarizer,
+            reasoning_budget=config.reasoning_budget,
             max_attempts=config.max_attempts,
         )
 
         tamperer_result = run_tamperer(
             summary=summarizer_result["summary"],
             model=config.models.tamperer,
+            reasoning_budget=config.reasoning_budget,
             max_attempts=config.max_attempts,
         )
 
@@ -48,6 +50,7 @@ def run(config: Config, documents: list[Document]) -> None:
             document_text=doc.text,
             tampered_summary=tamperer_result["tampered_summary"],
             model=config.models.locator,
+            reasoning_budget=config.reasoning_budget,
             max_attempts=config.max_attempts,
         )
 
@@ -55,6 +58,7 @@ def run(config: Config, documents: list[Document]) -> None:
             introduced_errors=tamperer_result["introduced_errors"],
             located_errors=locator_result["located_errors"],
             model=config.models.judge,
+            reasoning_budget=config.reasoning_budget,
             max_attempts=config.max_attempts,
         )
 
@@ -68,6 +72,13 @@ def run(config: Config, documents: list[Document]) -> None:
             "introduced_errors": tamperer_result["introduced_errors"],
             "locator": {
                 "located_errors": locator_result["located_errors"],
+                "reasoning_tokens": locator_result["reasoning_tokens"],
+            },
+            "summarizer": {
+                "reasoning_tokens": summarizer_result["reasoning_tokens"],
+            },
+            "tamperer": {
+                "reasoning_tokens": tamperer_result["reasoning_tokens"],
             },
             "judge": judge_result,
             "timestamp": datetime.now(timezone.utc).isoformat(),

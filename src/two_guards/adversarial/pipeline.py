@@ -40,7 +40,7 @@ def run(config: Config, documents: list[Document]) -> None:
             hallucination_type=None if truth_flag else random.choice(hallucination_types_keys),
             hallucination_types=hallucination_types,
             model=config.models.liar,
-            budget_tokens=config.budget_tokens,
+            reasoning_budget=config.reasoning_budget,
             max_attempts=config.max_attempts,
         )
 
@@ -48,7 +48,7 @@ def run(config: Config, documents: list[Document]) -> None:
             document_text=doc.text,
             liar_response=liar_result["response"],
             model=config.models.verifier,
-            budget_tokens=config.budget_tokens,
+            reasoning_budget=config.reasoning_budget,
             max_attempts=config.max_attempts,
         )
 
@@ -60,21 +60,29 @@ def run(config: Config, documents: list[Document]) -> None:
                     false_claim=liar_result["false_claim"],
                     targeted_claim=verifier_result["targeted_claim"] or "",
                     model=config.models.judge,
+                    reasoning_budget=config.reasoning_budget,
                     max_attempts=config.max_attempts,
                 )
                 passed = not judge_result["verifier_correctly_identified"]
             else:
-                judge_result = {
-                    "verifier_correctly_identified": False,
-                    "reasoning": "Verifier did not attempt a correction.",
-                }
+                judge_result = None
                 passed = True
         else:
-            judge_result = {
-                "verifier_correctly_identified": False,
-                "reasoning": "Liar told truth; no false claim to identify.",
-            }
+            judge_result = None
             passed = False
+
+        if judge_result is None:
+            judge_payload = {
+                "verifier_correctly_identified": False,
+                "reasoning": (
+                    "Verifier did not attempt a correction."
+                    if not liar_result["truth_flag"]
+                    else "Liar told truth; no false claim to identify."
+                ),
+                "reasoning_tokens": None,
+            }
+        else:
+            judge_payload = judge_result
 
         record = {
             "plan": "A",
@@ -82,18 +90,18 @@ def run(config: Config, documents: list[Document]) -> None:
             "source_text": doc.text,
             "liar": {
                 "response": liar_result["response"],
-                "reasoning": liar_result["reasoning"],
+                "reasoning_tokens": liar_result.get("reasoning_tokens"),
                 "truth_flag": liar_result["truth_flag"],
                 "hallucination_type": liar_result.get("hallucination_type"),
                 "false_claim": liar_result.get("false_claim"),
             },
             "verifier": {
                 "response": verifier_result["response"],
-                "reasoning": verifier_result["reasoning"],
+                "reasoning_tokens": verifier_result.get("reasoning_tokens"),
                 "attempted_correction": verifier_result["attempted_correction"],
                 "targeted_claim": verifier_result.get("targeted_claim"),
             },
-            "judge": judge_result,
+            "judge": judge_payload,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 

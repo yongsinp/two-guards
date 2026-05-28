@@ -28,8 +28,7 @@ def run_true_option(document_text: str, model: str, max_attempts: int = 3) -> di
         {"role": "system", "content": TRUE_OPTION_SYSTEM},
         {"role": "user", "content": TRUE_OPTION_USER.format(document_text=document_text)},
     ]
-    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
-    return parsed
+    return complete_json(model=model, messages=messages, max_attempts=max_attempts)
 
 
 def run(config: Config, documents: list[Document], hallucination_types: list[str]) -> None:
@@ -55,7 +54,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
                 document_text=doc.text,
                 hallucination_type=h_type,
                 model=config.models.generator,
-                budget_tokens=config.budget_tokens,
+                reasoning_budget=config.reasoning_budget,
                 max_attempts=config.max_attempts,
             )
             generated.append(result)
@@ -71,14 +70,14 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             "text": true_result["true_option"],
             "is_true": True,
             "hallucination_type": None,
-            "reasoning": None,
+            "reasoning_tokens": None,
         })
         for i, gen in enumerate(generated):
             options.append({
                 "text": gen["fabricated_option"],
                 "is_true": False,
                 "hallucination_type": hallucination_types[i],
-                "reasoning": gen["reasoning"],
+                "reasoning_tokens": gen.get("reasoning_tokens"),
             })
 
         random.shuffle(options)
@@ -88,6 +87,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             document_text=doc.text,
             options=option_texts,
             model=config.models.verifier,
+            reasoning_budget=config.reasoning_budget,
             max_attempts=config.max_attempts,
         )
 
@@ -102,6 +102,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             "verifier": {
                 "choice_index": choice_idx,
                 "correct": verifier_correct,
+                "reasoning_tokens": verifier_result.get("reasoning_tokens"),
             },
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }

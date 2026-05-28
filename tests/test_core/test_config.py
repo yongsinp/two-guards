@@ -15,7 +15,7 @@ models:
   tamperer: "anthropic/claude-sonnet-4-6"
   locator: "anthropic/claude-sonnet-4-6"
   judge: "anthropic/claude-sonnet-4-6"
-budget_tokens: 8000
+reasoning_budget: 8000
 max_attempts: 3
 """
     config_file = tmp_path / "config.yaml"
@@ -27,7 +27,7 @@ max_attempts: 3
     assert config.output_dir == "data"
     assert config.models.liar == "anthropic/claude-sonnet-4-6"
     assert config.models.judge == "anthropic/claude-sonnet-4-6"
-    assert config.budget_tokens == 8000
+    assert config.reasoning_budget == 8000
     assert config.max_attempts == 3
 
 
@@ -35,7 +35,7 @@ def test_config_default_path():
     config = load_config()
     assert config.input_dir is not None
     assert config.models.liar is not None
-    assert config.budget_tokens == 8000
+    assert config.reasoning_budget == 8000
     assert config.max_attempts == 3
 
 

@@ -1,23 +1,9 @@
 """LLM wrapper around litellm with extended thinking support."""
 
 import json
-from dataclasses import dataclass
+import os
 
 import litellm
-
-
-@dataclass
-class LLMResponse:
-    """Normalized response from any LLM provider.
-
-    Attributes:
-        content: The text response from the model.
-        reasoning: Reasoning tokens, or None if the model
-            does not support them or reasoning was not requested.
-    """
-
-    content: str
-    reasoning: str | None = None
 
 
 class LLMJsonError(Exception):
@@ -28,18 +14,18 @@ def complete(
     model: str,
     messages: list[dict],
     thinking: bool = False,
-    budget_tokens: int = 8000,
-) -> LLMResponse:
+    reasoning_budget: int = 8000,
+) -> dict:
     """Call an LLM via litellm and return a normalized response.
 
     Args:
         model: litellm model string, e.g. "anthropic/claude-sonnet-4-6".
         messages: OpenAI-style message list (role/content dicts).
         thinking: Whether to enable extended thinking / reasoning tokens.
-        budget_tokens: Token budget for the thinking block when thinking=True.
+        reasoning_budget: Token budget for the thinking block when thinking=True.
 
     Returns:
-        LLMResponse with the model's text output and optional reasoning trace.
+        Dict with keys: content, reasoning_tokens.
     """
     kwargs: dict = {
         "model": model,
@@ -47,14 +33,17 @@ def complete(
     }
 
     if thinking:
-        kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget_tokens}
+        kwargs["thinking"] = {"type": "enabled", "budget_tokens": reasoning_budget}
 
     response = litellm.completion(**kwargs)
 
     content = response.choices[0].message.content or ""
     reasoning = response._hidden_params.get("reasoning_content")
 
-    return LLMResponse(content=content, reasoning=reasoning)
+    return {
+        "content": content,
+        "reasoning_tokens": reasoning,
+    }
 
 
 def complete_json(
@@ -62,8 +51,8 @@ def complete_json(
     messages: list[dict],
     max_attempts: int = 3,
     thinking: bool = False,
-    budget_tokens: int = 8000,
-) -> tuple[dict, str | None]:
+    reasoning_budget: int = 8000,
+) -> dict:
     """Call an LLM and parse the response as JSON, retrying on parse failures.
 
     Args:
@@ -71,10 +60,10 @@ def complete_json(
         messages: OpenAI-style message list.
         max_attempts: Total number of attempts before raising LLMJsonError.
         thinking: Whether to enable extended thinking.
-        budget_tokens: Token budget for the thinking block when thinking=True.
+        reasoning_budget: Token budget for the thinking block when thinking=True.
 
     Returns:
-        Tuple of (parsed dict, reasoning string or None).
+        Parsed JSON payload with reasoning_tokens attached.
 
     Raises:
         LLMJsonError: If all attempts fail to produce valid JSON.
@@ -85,12 +74,14 @@ def complete_json(
             model=model,
             messages=messages,
             thinking=thinking,
-            budget_tokens=budget_tokens,
+            reasoning_budget=reasoning_budget,
         )
-        last_content = response.content
+        last_content = response["content"]
         try:
             last_content = _get_outermost_dict(last_content)
-            return json.loads(last_content), response.reasoning
+            parsed = json.loads(last_content)
+            parsed.setdefault("reasoning_tokens", response.get("reasoning_tokens"))
+            return parsed
         except ValueError:
             continue
     raise LLMJsonError(f"Failed to parse JSON after {max_attempts} attempts. Last response: {last_content!r}")

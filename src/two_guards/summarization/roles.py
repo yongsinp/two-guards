@@ -13,55 +13,84 @@ from two_guards.summarization.prompts import (
 )
 
 
-def run_summarizer(document_text: str, model: str, max_attempts: int = 3) -> dict:
+def run_summarizer(
+    document_text: str,
+    model: str,
+    reasoning_budget: int = 8000,
+    max_attempts: int = 3,
+) -> dict:
     """Generate an accurate summary of a legal document.
 
     Args:
         document_text: The source legal document.
         model: litellm model string.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with key: summary.
+        Dict with key: summary and reasoning_tokens.
     """
     messages = [
         {"role": "system", "content": SUMMARIZER_SYSTEM},
         {"role": "user", "content": SUMMARIZER_USER.format(document_text=document_text)},
     ]
-    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
-    return parsed
+    return complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        reasoning_budget=reasoning_budget,
+    )
 
 
-def run_tamperer(summary: str, model: str, max_attempts: int = 3) -> dict:
+def run_tamperer(
+    summary: str,
+    model: str,
+    reasoning_budget: int = 8000,
+    max_attempts: int = 3,
+) -> dict:
     """Introduce 1-3 subtle factual errors into an accurate summary.
 
     Args:
         summary: The accurate summary to tamper with.
         model: litellm model string.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with keys: tampered_summary, introduced_errors (list of descriptions).
+        Dict with keys: tampered_summary, introduced_errors, reasoning_tokens.
     """
     messages = [
         {"role": "system", "content": TAMPERER_SYSTEM},
         {"role": "user", "content": TAMPERER_USER.format(summary=summary)},
     ]
-    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
-    return parsed
+    return complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        reasoning_budget=reasoning_budget,
+    )
 
 
-def run_locator(document_text: str, tampered_summary: str, model: str, max_attempts: int = 3) -> dict:
+def run_locator(
+    document_text: str,
+    tampered_summary: str,
+    model: str,
+    reasoning_budget: int = 8000,
+    max_attempts: int = 3,
+) -> dict:
     """Identify factual errors in a summary by comparing it to the source document.
 
     Args:
         document_text: The original source document.
         tampered_summary: The summary that may contain errors.
         model: litellm model string.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with key: located_errors (list of descriptions, may be empty).
+        Dict with key: located_errors and reasoning_tokens.
     """
     messages = [
         {"role": "system", "content": LOCATOR_SYSTEM},
@@ -70,21 +99,33 @@ def run_locator(document_text: str, tampered_summary: str, model: str, max_attem
             tampered_summary=tampered_summary,
         )},
     ]
-    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
-    return parsed
+    return complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        reasoning_budget=reasoning_budget,
+    )
 
 
-def run_judge(introduced_errors: list[str], located_errors: list[str], model: str, max_attempts: int = 3) -> dict:
+def run_judge(
+    introduced_errors: list[str],
+    located_errors: list[str],
+    model: str,
+    reasoning_budget: int = 8000,
+    max_attempts: int = 3,
+) -> dict:
     """Determine whether the locator found all introduced errors.
 
     Args:
         introduced_errors: Descriptions of errors intentionally introduced.
         located_errors: Descriptions of errors the locator reported.
         model: litellm model string.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with keys: all_errors_found, reasoning.
+        Dict with keys: all_errors_found, reasoning, reasoning_tokens.
     """
     messages = [
         {"role": "system", "content": JUDGE_SYSTEM},
@@ -93,5 +134,10 @@ def run_judge(introduced_errors: list[str], located_errors: list[str], model: st
             located_errors="\n".join(f"- {e}" for e in located_errors),
         )},
     ]
-    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
-    return parsed
+    return complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        reasoning_budget=reasoning_budget,
+    )
