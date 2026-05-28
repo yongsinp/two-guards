@@ -29,7 +29,10 @@ import time
 from pathlib import Path
 
 import requests
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
+
+# spellchecker
+from spellchecker import SpellChecker
 
 BASE_URL    = "https://www.courtlistener.com"
 SEARCH_URL  = f"{BASE_URL}/api/rest/v4/search/"
@@ -112,6 +115,27 @@ def get_pdf_url(opinion: dict) -> "str | None":
 # ---------------------------------------------------------------------------
 # SCOTUS-specific text cleaning
 # ---------------------------------------------------------------------------
+
+spell = SpellChecker()
+
+def fix_mid_word_spaces (text: str) -> str:
+    # fixes spaces inserted into words seemingly randomly from PDF conversion
+    # ex: from Royal Canin case; "clai ms" -> "claims", "o riginal" -> "original"
+    def merge_if_word(m):
+        left = m.group(1)
+        right = m.group(2)
+        merged = left+right
+
+        # leaves it alone if both words are valid
+        # ex: "the" "rapist" doesn't become "therapist" every time
+        if left in spell and right in spell:
+            return m.group(0)
+
+        # checks to see if two words merged can be one word
+        if merged in spell:
+            return merged
+        return m.group(0)
+    return re.sub(r"([a-z]+), ([a-z])", merge_if_word, text)
 
 # ── Footnote detection ──────────────────────────────────────────────────────
 # A footnote block starts with a horizontal rule (—— or similar dashes/em-dashes)
@@ -289,19 +313,25 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
 
     # 2. Extract footnotes (delimited by —— lines) before other cleaning
     #    so we don't accidentally mangle them.
-    # text, footnotes = _extract_footnotes(text)
-    footnotes = []
-    text = "SEEHERE" + text
+    text, footnotes = _extract_footnotes(text)
+    #footnotes = []
+    #text = "SEEHERE" + text
 
     # 3. Strip page headers / running titles
     text = _remove_page_headers(text)
     #
     # 4. Remove any residual lone page numbers
     text = _LONE_PAGE_NUM.sub("", text)
+
+    # 4.5. Fix mid word spaces
+    text = fix_mid_word_spaces(text)
     #
     # 5. Collapse excessive blank lines
-    text = re.sub(r"(?<=\w)-\n(?=\w)", "", text)
+    #text = re.sub(r"(?<=\w)-\n(?=\w)", "", text)
+    #text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"(?<=\w)-\s*\n\s*(?=\w)", "", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
+
     #
     # 6. Join soft line-breaks within paragraphs (single newline → space),
     #    but preserve intentional paragraph breaks (double newline).
