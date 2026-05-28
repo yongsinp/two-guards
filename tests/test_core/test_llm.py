@@ -16,11 +16,43 @@ def _mock_response(content: str, thinking_content: str | None = None):
     choice = MagicMock()
     message = MagicMock()
     message.content = content
+    message.reasoning_content = None
+    message.thinking = None
+    message.thinking_content = None
+    message.thinking_blocks = None
     mock.choices = [choice]
     choice.message = message
     mock._hidden_params = {}
     if thinking_content:
         mock._hidden_params["reasoning_content"] = thinking_content
+    return mock
+
+
+def _mock_response_message_reasoning(content: str, reasoning_content: str):
+    mock = MagicMock()
+    choice = MagicMock()
+    message = MagicMock()
+    message.content = content
+    message.reasoning_content = reasoning_content
+    message.thinking_blocks = None
+    mock.choices = [choice]
+    choice.message = message
+    mock._hidden_params = {}
+    return mock
+
+
+def _mock_response_thinking_blocks(content: str, blocks: list[str]):
+    mock = MagicMock()
+    choice = MagicMock()
+    message = MagicMock()
+    message.content = content
+    message.reasoning_content = None
+    message.thinking = None
+    message.thinking_content = None
+    message.thinking_blocks = [MagicMock(thinking=b) for b in blocks]
+    mock.choices = [choice]
+    choice.message = message
+    mock._hidden_params = {}
     return mock
 
 
@@ -59,6 +91,40 @@ def test_complete_with_thinking():
         assert result["reasoning_tokens"] == reasoning
         call_kwargs = mock_completion.call_args[1]
         assert call_kwargs["thinking"] == {"type": "enabled", "budget_tokens": 8000}
+
+
+def test_complete_extracts_reasoning_from_message_field():
+    with patch("litellm.completion") as mock_completion:
+        mock_completion.return_value = _mock_response_message_reasoning(
+            content="Answer",
+            reasoning_content="Reasoning from message field",
+        )
+
+        result = complete(
+            model="anthropic/claude-sonnet-4-6",
+            messages=[{"role": "user", "content": "Question"}],
+            thinking=True,
+            reasoning_budget=8000,
+        )
+
+        assert result["reasoning_tokens"] == "Reasoning from message field"
+
+
+def test_complete_extracts_reasoning_from_thinking_blocks():
+    with patch("litellm.completion") as mock_completion:
+        mock_completion.return_value = _mock_response_thinking_blocks(
+            content="Answer",
+            blocks=["step one", "step two"],
+        )
+
+        result = complete(
+            model="anthropic/claude-sonnet-4-6",
+            messages=[{"role": "user", "content": "Question"}],
+            thinking=True,
+            reasoning_budget=8000,
+        )
+
+        assert result["reasoning_tokens"] == "step one\nstep two"
 
 
 @patch("two_guards.core.llm.complete")

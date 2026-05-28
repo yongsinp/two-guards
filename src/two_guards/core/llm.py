@@ -38,12 +38,40 @@ def complete(
     response = litellm.completion(**kwargs)
 
     content = response.choices[0].message.content or ""
-    reasoning = response._hidden_params.get("reasoning_content")
+    reasoning = _extract_reasoning_tokens(response)
 
     return {
         "content": content,
         "reasoning_tokens": reasoning,
     }
+
+
+def _extract_reasoning_tokens(response) -> str | None:
+    """Extract reasoning tokens across LiteLLM response shapes."""
+    hidden = getattr(response, "_hidden_params", None) or {}
+    if hidden.get("reasoning_content"):
+        return hidden["reasoning_content"]
+
+    choices = getattr(response, "choices", None) or []
+    if choices:
+        message = getattr(choices[0], "message", None)
+        if message is not None:
+            for field in ("reasoning_content", "thinking", "thinking_content"):
+                value = getattr(message, field, None)
+                if value:
+                    return value
+
+            thinking_blocks = getattr(message, "thinking_blocks", None) or []
+            if thinking_blocks:
+                parts: list[str] = []
+                for block in thinking_blocks:
+                    text = getattr(block, "thinking", None)
+                    if text:
+                        parts.append(text)
+                if parts:
+                    return "\n".join(parts)
+
+    return None
 
 
 def complete_json(
