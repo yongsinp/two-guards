@@ -4,8 +4,8 @@ from two_guards.core.llm import complete_json
 from two_guards.multiple_choice.prompts import (
     GENERATOR_SYSTEM,
     GENERATOR_USER,
-    JUDGE_SYSTEM,
-    JUDGE_USER,
+    VERIFIER_SYSTEM,
+    VERIFIER_USER,
 )
 
 
@@ -13,7 +13,7 @@ def run_generator(
     document_text: str,
     hallucination_type: str,
     model: str,
-    budget_tokens: int,
+    reasoning_budget: int,
     max_attempts: int = 3,
 ) -> dict:
     """Generate one plausible but incorrect answer option for a document.
@@ -25,11 +25,11 @@ def run_generator(
         hallucination_type: The type of error to introduce (e.g. "date_error").
             Determines which prompt template is used.
         model: litellm model string.
-        budget_tokens: Token budget for the thinking trace.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with keys: fabricated_option, question, reasoning.
+        Dict with key: fabricated_option and reasoning_tokens.
     """
     messages = [
         {"role": "system", "content": GENERATOR_SYSTEM},
@@ -38,44 +38,46 @@ def run_generator(
             hallucination_type=hallucination_type,
         )},
     ]
-    parsed, reasoning = complete_json(
+    return complete_json(
         model=model,
         messages=messages,
         max_attempts=max_attempts,
         thinking=True,
-        budget_tokens=budget_tokens,
+        reasoning_budget=reasoning_budget,
     )
-    parsed["reasoning"] = reasoning
-    return parsed
 
 
-def run_judge(
+def run_verifier(
     document_text: str,
-    question: str,
     options: list[str],
     model: str,
+    reasoning_budget: int,
     max_attempts: int = 3,
 ) -> dict:
     """Select the correct answer from a list of options based on the document.
 
     Args:
         document_text: The source legal document.
-        question: The multiple-choice question.
-        options: List of answer option texts (including the true answer).
+        options: List of statement texts (including the true statement).
         model: litellm model string.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with keys: choice_index (0-based), reasoning.
+        Dict with keys: choice_index (0-based), reasoning, reasoning_tokens.
     """
     options_text = "\n".join(f"{i}. {opt}" for i, opt in enumerate(options))
     messages = [
-        {"role": "system", "content": JUDGE_SYSTEM},
-        {"role": "user", "content": JUDGE_USER.format(
+        {"role": "system", "content": VERIFIER_SYSTEM},
+        {"role": "user", "content": VERIFIER_USER.format(
             document_text=document_text,
-            question=question,
             options_text=options_text,
         )},
     ]
-    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
-    return parsed
+    return complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        reasoning_budget=reasoning_budget,
+    )

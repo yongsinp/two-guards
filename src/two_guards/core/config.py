@@ -34,14 +34,14 @@ class Config:
         input_dir: Directory containing source .txt documents.
         output_dir: Root directory for JSONL output files.
         models: Per-role model assignments.
-        budget_tokens: Maximum tokens to allocate for the reasoning trace.
+        reasoning_budget: Maximum tokens to allocate for the reasoning trace.
         max_attempts: Maximum number of JSON parse attempts before raising an error.
     """
 
     input_dir: str = "data/input"
     output_dir: str = "data"
     models: ModelConfig = field(default_factory=ModelConfig)
-    budget_tokens: int = 8000
+    reasoning_budget: int = 8000
     max_attempts: int = 3
 
 
@@ -72,6 +72,6 @@ def load_config(path: Path | None = None) -> Config:
         input_dir=raw.get("input_dir", "data/input"),
         output_dir=raw.get("output_dir", "data"),
         models=models,
-        budget_tokens=raw.get("budget_tokens", 8000),
+        reasoning_budget=raw.get("reasoning_budget", 8000),
         max_attempts=raw.get("max_attempts", 3),
     )

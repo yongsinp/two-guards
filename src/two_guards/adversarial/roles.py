@@ -18,7 +18,7 @@ def run_liar(
         hallucination_type: str | None,
         hallucination_types: dict[str, dict[str, str]] | None,
         model: str,
-        budget_tokens: int,
+        reasoning_budget: int,
         max_attempts: int = 3,
 ) -> dict:
     """Generate a response to a legal document, optionally introducing a falsehood.
@@ -31,11 +31,12 @@ def run_liar(
         hallucination_type: The type of hallucination the liar is asked to generate.
         hallucination_types: All hallucination types, with a description and an example.
         model: litellm model string.
-        budget_tokens: Token budget for the thinking trace.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with keys: response, truth_flag, false_claim (or None), reasoning.
+        Dict with keys: response, truth_flag, false_claim (or None),
+        hallucination_type, reasoning_tokens.
     """
 
     hallucination_info = "" if truth_flag else LIAR_USER_HALLUCINATION_INFO.format(
@@ -53,14 +54,14 @@ def run_liar(
         ) + hallucination_info}
     ]
 
-    return fetch_parsed_response(model, messages, budget_tokens, max_attempts)
+    return fetch_parsed_response(model, messages, reasoning_budget, max_attempts)
 
 
 def run_verifier(
         document_text: str,
         liar_response: str,
         model: str,
-        budget_tokens: int,
+        reasoning_budget: int,
         max_attempts: int = 3,
 ) -> dict:
     """Fact-check a response against the source document.
@@ -71,12 +72,12 @@ def run_verifier(
         document_text: The source legal document.
         liar_response: The response to verify.
         model: litellm model string.
-        budget_tokens: Token budget for the thinking trace.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
         Dict with keys: attempted_correction, targeted_claim (or None),
-        response, reasoning.
+        response, reasoning_tokens.
     """
     messages = [
         {"role": "system", "content": VERIFIER_SYSTEM},
@@ -86,19 +87,22 @@ def run_verifier(
         )},
     ]
 
-    return fetch_parsed_response(model, messages, budget_tokens, max_attempts)
+    return fetch_parsed_response(model, messages, reasoning_budget, max_attempts)
 
 
-def fetch_parsed_response(model, messages, budget_tokens, max_attempts):
-    parsed, reasoning = complete_json(
+def fetch_parsed_response(
+    model: str,
+    messages: list[dict],
+    reasoning_budget: int,
+    max_attempts: int,
+) -> dict:
+    return complete_json(
         model=model,
         messages=messages,
         max_attempts=max_attempts,
         thinking=True,
-        budget_tokens=budget_tokens,
+        reasoning_budget=reasoning_budget,
     )
-    parsed["reasoning"] = reasoning
-    return parsed
 
 
 def run_judge(
@@ -107,6 +111,7 @@ def run_judge(
         false_claim: str,
         targeted_claim: str,
         model: str,
+        reasoning_budget: int = 8000,
         max_attempts: int = 3,
 ) -> dict:
     """Determine whether the verifier correctly identified the liar's false claim.
@@ -117,10 +122,11 @@ def run_judge(
         false_claim: The specific claim the liar fabricated.
         targeted_claim: The claim the verifier attempted to correct.
         model: litellm model string.
+        reasoning_budget: Token budget for the thinking trace.
         max_attempts: Maximum number of retry attempts for JSON parsing.
 
     Returns:
-        Dict with keys: verifier_correctly_identified, reasoning.
+        Dict with keys: verifier_correctly_identified, reasoning, reasoning_tokens.
     """
     messages = [
         {"role": "system", "content": JUDGE_SYSTEM},
@@ -131,5 +137,10 @@ def run_judge(
             targeted_claim=targeted_claim,
         )},
     ]
-    parsed, _ = complete_json(model=model, messages=messages, max_attempts=max_attempts)
-    return parsed
+    return complete_json(
+        model=model,
+        messages=messages,
+        max_attempts=max_attempts,
+        thinking=True,
+        reasoning_budget=reasoning_budget,
+    )

@@ -14,7 +14,8 @@ from two_guards.summarization.pipeline import run
 def test_run_summarizer():
     resp_dict = {"summary": "The court awarded $50,000 in damages."}
     with patch("two_guards.summarization.roles.complete_json") as mock:
-        mock.return_value = (resp_dict, None)
+        resp_dict["reasoning_tokens"] = None
+        mock.return_value = resp_dict
         result = run_summarizer(
             document_text="Full document text...",
             model="anthropic/claude-sonnet-4-5",
@@ -29,7 +30,8 @@ def test_run_tamperer():
         "introduced_errors": ["Changed damages from $50,000 to $75,000"],
     }
     with patch("two_guards.summarization.roles.complete_json") as mock:
-        mock.return_value = (resp_dict, None)
+        resp_dict["reasoning_tokens"] = None
+        mock.return_value = resp_dict
         result = run_tamperer(
             summary="The court awarded $50,000 in damages.",
             model="anthropic/claude-sonnet-4-5",
@@ -44,7 +46,8 @@ def test_run_locator():
         "located_errors": ["Damages amount is incorrect — should be $50,000 not $75,000"],
     }
     with patch("two_guards.summarization.roles.complete_json") as mock:
-        mock.return_value = (resp_dict, None)
+        resp_dict["reasoning_tokens"] = None
+        mock.return_value = resp_dict
         result = run_locator(
             document_text="The court awarded $50,000 in damages.",
             tampered_summary="The court awarded $75,000 in damages.",
@@ -60,7 +63,8 @@ def test_run_judge():
         "reasoning": "The fact-checker identified the damages amount error.",
     }
     with patch("two_guards.summarization.roles.complete_json") as mock:
-        mock.return_value = (resp_dict, None)
+        resp_dict["reasoning_tokens"] = None
+        mock.return_value = resp_dict
         result = run_judge(
             introduced_errors=["Changed $50,000 to $75,000"],
             located_errors=["Damages should be $50,000 not $75,000"],
@@ -75,19 +79,21 @@ def test_pipeline_passed_when_locator_misses_error(tmp_path):
         input_dir=str(tmp_path / "input"),
         output_dir=str(tmp_path / "output"),
         models=ModelConfig(),
-        budget_tokens=8000,
+        reasoning_budget=8000,
     )
     doc = Document(id="doc_001", text="The penalty is $10,000 under Section 5.", source_path="test.txt")
 
-    summarizer_output = {"summary": "A $10,000 penalty applies under Section 5."}
+    summarizer_output = {"summary": "A $10,000 penalty applies under Section 5.", "reasoning_tokens": "Summary extracted from source"}
     tamperer_output = {
         "tampered_summary": "A $15,000 penalty applies under Section 5.",
         "introduced_errors": ["Changed penalty from $10,000 to $15,000"],
+        "reasoning_tokens": "Changed numeric amount to inject subtle error",
     }
-    locator_output = {"located_errors": []}
+    locator_output = {"located_errors": [], "reasoning_tokens": "No discrepancies detected"}
     judge_output = {
         "all_errors_found": False,
         "reasoning": "The fact-checker did not identify the damages error.",
+        "reasoning_tokens": "Compared introduced vs located lists and found a miss",
     }
 
     with patch("two_guards.summarization.pipeline.run_summarizer", return_value=summarizer_output), \
@@ -108,19 +114,24 @@ def test_pipeline_failed_when_locator_finds_all(tmp_path):
         input_dir=str(tmp_path / "input"),
         output_dir=str(tmp_path / "output"),
         models=ModelConfig(),
-        budget_tokens=8000,
+        reasoning_budget=8000,
     )
     doc = Document(id="doc_001", text="The penalty is $10,000.", source_path="test.txt")
 
-    summarizer_output = {"summary": "A $10,000 penalty."}
+    summarizer_output = {"summary": "A $10,000 penalty.", "reasoning_tokens": "Compressed key fact from source"}
     tamperer_output = {
         "tampered_summary": "A $15,000 penalty.",
         "introduced_errors": ["Changed $10,000 to $15,000"],
+        "reasoning_tokens": "Introduced one amount error",
     }
-    locator_output = {"located_errors": ["Amount should be $10,000 not $15,000"]}
+    locator_output = {
+        "located_errors": ["Amount should be $10,000 not $15,000"],
+        "reasoning_tokens": "Detected numeric mismatch",
+    }
     judge_output = {
         "all_errors_found": True,
         "reasoning": "Fact-checker correctly identified the amount error.",
+        "reasoning_tokens": "All introduced errors are present in located errors",
     }
 
     with patch("two_guards.summarization.pipeline.run_summarizer", return_value=summarizer_output), \
