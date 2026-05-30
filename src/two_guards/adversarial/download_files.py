@@ -111,7 +111,6 @@ def get_pdf_url(opinion: dict) -> "str | None":
             return download
     return None
 
-
 # ---------------------------------------------------------------------------
 # SCOTUS-specific text cleaning
 # ---------------------------------------------------------------------------
@@ -135,7 +134,7 @@ def fix_mid_word_spaces (text: str) -> str:
         if merged in spell:
             return merged
         return m.group(0)
-    return re.sub(r"([a-z]+), ([a-z])", merge_if_word, text)
+    return re.sub(r"([a-z]+) ([a-z])", merge_if_word, text)
 
 # ── Footnote detection ──────────────────────────────────────────────────────
 # A footnote block starts with a horizontal rule (—— or similar dashes/em-dashes)
@@ -308,8 +307,13 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
         body       : cleaned opinion text (string)
         footnotes  : list of footnote strings, in document order
     """
+
     # 1. Normalise line endings
     text = raw.replace("\r\n", "\n").replace("\r", "\n")
+
+    # 1.5. Strip headers
+    text = _remove_page_headers(text)
+
 
     # 2. Extract footnotes (delimited by —— lines) before other cleaning
     #    so we don't accidentally mangle them.
@@ -318,7 +322,7 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
     #text = "SEEHERE" + text
 
     # 3. Strip page headers / running titles
-    text = _remove_page_headers(text)
+  #  text = _remove_page_headers(text)
     #
     # 4. Remove any residual lone page numbers
     text = _LONE_PAGE_NUM.sub("", text)
@@ -335,16 +339,28 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
     #
     # 6. Join soft line-breaks within paragraphs (single newline → space),
     #    but preserve intentional paragraph breaks (double newline).
-    text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
+    #text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
+    text = re.sub(r"\n+", " ", text)
+
     #
     # 7. Tidy multiple spaces
     text = re.sub(r" {2,}", " ", text)
     #
+
+    # 7.5 clean footnotes
+    cleaned_footnotes = []
+    for fn in footnotes:
+        fn = re.sub(r"(?<=\w)-\s*\n\s*(?=\w)", "", fn)
+        fn = fix_mid_word_spaces(fn)
+        fn = re.sub(r"\n+", " ", fn)
+        fn = re.sub(r" {2,}", " ", fn)
+        cleaned_footnotes.append(fn.strip())
+
     # 8. Strip each paragraph
     paragraphs = [p.strip() for p in text.split("\n\n")]
     text = "\n\n".join(p for p in paragraphs if p)
 
-    return text, footnotes
+    return text, cleaned_footnotes
 
 
 def assemble_output(body: str, footnotes: list[str]) -> str:
@@ -398,6 +414,7 @@ def fetch_and_convert(session: requests.Session, url: str, pdf_dest: Path, txt_d
         reader = PdfReader(io.BytesIO(pdf_bytes))
         pages  = [page.extract_text() or "" for page in reader.pages]
         raw    = "\n".join(pages)
+      #  raw = extract_text_no_headers(reader)
     except Exception as e:
         print(f"    ✗ PDF parse error: {e}")
         # PDF is already saved, so don't return False — just skip TXT
