@@ -168,14 +168,30 @@ _LONE_PAGE_NUM = re.compile(r"(?m)^\s*\d+\s*$")
 #   OCTOBER TERM, 20XX
 
 _SLIP_BANNER = re.compile(
-    r"^\(Slip Opinion\)\s*\n"
-    r"OCTOBER TERM,\s*\d{4}\s*\n",
-    re.MULTILINE,
+ #   r"^\(Slip Opinion\)\s*\n"
+ #   r"OCTOBER TERM,\s*\d{4}\s*\n",
+  #  r"\(Slip Opinion\)\s+OCTOBER TERM,\s*\d{4}\s*\d*\s*\w*",
+  #  re.MULTILINE,
+   # r".*\(Slip Opinion\).*?"
+  #  r"(?=
+    r".*\(Slip Opinion\).*?(?=NOTICE:)",
+    re.DOTALL,
 )
 
 # "Cite as: NNN U. S. ___ (YYYY)" line (odd-page header line 1)
 _CITE_AS = re.compile(
-    r"(?m)^Cite as:\s*\d+\s*U\.\s*S\.\s*[_\d]+\s*\(\d{4}\)\s*$"
+   # r"(?m)^Cite as:\s*\d+\s*U\.\s*S\.\s*[_\d]+\s*\(\d{4}\)\s*$"
+    r"Cite as:\s*\d+\s*U\.\s*S\.\s*[_\d]+\s*\(\d{4}\)\s*\d*\s*"
+    r"(?:Syllabus|Opinion of the Court|Per Curiam|"
+    r"[A-Z][A-Z .,']+,\s*(?:C\.\s*)?J\.,\s*\w[\w ]+)?"
+)
+
+_DIVIDER = re.compile(r"_+\s*_+")
+
+_EVEN_PAGE_HEADERS = re.compile(
+    r"[\s\n]\d+\s+[A-Z][A-Z0-9 ,.'()&\-]+v\.\s+[A-Z][A-Z0-9 ,.'()&\-]+"
+    r"(?:Opinion of the Court|Per Curiam|"
+    r"[A-Z][A-Z .,']+,\s*(?:C\.\s*)?J\.,\s*\w[\w ]+)"
 )
 
 # Section-label lines that appear as the last line of a running header block.
@@ -312,6 +328,9 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
     text = raw.replace("\r\n", "\n").replace("\r", "\n")
 
     # 1.5. Strip headers
+    text = _SLIP_BANNER.sub("", text)
+    text = _CITE_AS.sub("", text)
+    text = _DIVIDER.sub("", text)
     text = _remove_page_headers(text)
 
 
@@ -360,20 +379,23 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
     paragraphs = [p.strip() for p in text.split("\n\n")]
     text = "\n\n".join(p for p in paragraphs if p)
 
+    text = _EVEN_PAGE_HEADERS.sub("", text)
+
+
     return text, cleaned_footnotes
 
 
 def assemble_output(body: str, footnotes: list[str]) -> str:
     """Combine body + footnotes section into the final .txt content."""
     parts = [body]
-    if footnotes:
-        parts.append("\n" + "=" * 72)
-        parts.append("FOOTNOTES")
-        parts.append("=" * 72 + "\n")
-        for fn in footnotes:
-            # Ensure each footnote is separated by a blank line
-            parts.append(fn.strip())
-            parts.append("")
+ #   if footnotes:
+ #       parts.append("\n" + "=" * 72)
+ #       parts.append("FOOTNOTES")
+ #       parts.append("=" * 72 + "\n")
+ #       for fn in footnotes:
+ #           # Ensure each footnote is separated by a blank line
+ #           parts.append(fn.strip())
+ #           parts.append("")
     return "\n".join(parts)
 
 # ---------------------------------------------------------------------------
@@ -571,3 +593,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
