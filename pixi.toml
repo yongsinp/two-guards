@@ -20,6 +20,7 @@ pyyaml = "*"
 [feature.dev.pypi-dependencies]
 pytest = "*"
 pytest-asyncio = "*"
+tiktoken = "*"
 
 [feature.dev.tasks]
 test = "python -m pytest tests/ -v"
