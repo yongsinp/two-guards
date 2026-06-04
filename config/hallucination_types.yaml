@@ -30,7 +30,7 @@ Misattribution:
     description: "Names of people, places, dates, or organizations are incorrect."
     example: "The first president of the United States was Abraham Lincoln."
 
-Anchoring :
+Anchoring:
     description: "Wrong legal provision."
     example: "Freedom of speech is protected under the Second Amendment of the US Constitution."
 
