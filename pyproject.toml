@@ -21,10 +21,14 @@ dependencies = [
     "litellm",
     "pydantic>=2.0",
     "pyyaml",
+    "pypdf>=6.12.2,<7",
+    "pyspellchecker>=0.8.0,<0.9",
+    "requests>=2.32.5,<3",
+    "tqdm>=4.67.1,<5",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
+dev = ["pytest", "pytest-asyncio", "tiktoken"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
