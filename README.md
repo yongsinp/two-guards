@@ -21,4 +21,18 @@ These are the types of hallucinations (along with their descriptions and example
 
 ## Setup
 
-##
+```bash
+pixi install -e dev
+```
+
+Run a pipeline:
+
+```bash
+pixi run -e dev python -m two_guards.adversarial
+```
+
+Run tests:
+
+```bash
+pixi run -e dev pytest tests/ -v
+```
