@@ -1,10 +1,10 @@
 """Prompt templates for Plan B (Multiple Choice) roles."""
 
 GENERATOR_SYSTEM = """You are an expert at crafting plausible but incorrect legal statements.
-You will be given a legal document and a hallucination type.
+You will be given a legal document and a lie type.
 
 Your task is to generate ONE statement that is subtly incorrect according
-to the specified hallucination type. The fabrication must be plausible enough to
+to the specified lie type. The fabrication must be plausible enough to
 mislead an expert reader.
 
 You MUST respond in valid JSON with this exact structure:
@@ -21,7 +21,7 @@ GENERATOR_USER = """Source legal document:
 
 ---
 
-Hallucination type: {hallucination_type}
+Lie type: {hallucination_type}
 
 Generate one plausible but incorrect statement about this document.
 The error should be of the type: {hallucination_type}"""
