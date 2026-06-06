@@ -15,8 +15,8 @@ from two_guards.multiple_choice.roles import run_generator, run_verifier
 
 
 def _load_processed_document_ids(output_dir: str) -> set[str]:
-    """Collect already-written Plan B document IDs from passed/failed outputs."""
-    root = Path(output_dir) / "plan_b"
+    """Collect already-written Plan B document IDs from original outputs."""
+    root = Path(output_dir) / "plan_b" / "original"
     processed_ids: set[str] = set()
     if not root.exists():
         return processed_ids
@@ -80,7 +80,6 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             for i, gen in enumerate(generated):
                 options.append({
                     "text": gen["fabricated_option"],
-                    "is_true": False,
                     "hallucination_type": hallucination_types[i],
                     "reasoning": gen.get("reasoning"),
                     "reasoning_tokens": gen.get("reasoning_tokens"),
@@ -98,12 +97,10 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             )
 
             choice_indices = verifier_result.get("choice_indices", [])
-            # All options are lies; any selection means the verifier was fooled
-            passed = len(choice_indices) > 0
-
-            record = {
+            original_record = {
                 "plan": "B",
                 "document_id": doc.id,
+                "source_document": doc.text,
                 "options": options,
                 "verifier": {
                     "choice_indices": choice_indices,
@@ -115,9 +112,31 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             write_record(
                 output_dir=config.output_dir,
                 plan="plan_b",
-                passed=passed,
-                record=record,
+                passed=None,
+                split="original",
+                record=original_record,
             )
+
+            selected_indices = {
+                idx for idx in choice_indices if isinstance(idx, int) and 0 <= idx < len(options)
+            }
+            for i, option in enumerate(options):
+                option_record = {
+                    "plan": "B",
+                    "document_id": doc.id,
+                    "source_document": doc.text,
+                    "option_index": i,
+                    "option": option,
+                    "selected_by_verifier": i in selected_indices,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+                write_record(
+                    output_dir=config.output_dir,
+                    plan="plan_b",
+                    passed=i in selected_indices,
+                    record=option_record,
+                )
+
             processed_document_ids.add(doc.id)
         except RateLimitError:
             raise

@@ -84,10 +84,14 @@ def test_pipeline_passed_when_verifier_picks_any_option(tmp_path):
 
         run(config=config, documents=[doc], hallucination_types=["numerical", "magnitude"])
 
-        mock_write.assert_called_once()
-        call_kwargs = mock_write.call_args[1]
-        # Verifier selected an option → was fooled → passed
-        assert call_kwargs["passed"] is True
+        # 1 original record + 2 option-level records
+        assert mock_write.call_count == 3
+        calls = [c.kwargs for c in mock_write.call_args_list]
+        original_call = next(c for c in calls if c.get("split") == "original")
+        assert original_call["record"]["source_document"] == "The penalty is $10,000."
+        option_calls = [c for c in calls if c.get("split") is None]
+        assert len(option_calls) == 2
+        assert sorted(c["passed"] for c in option_calls) == [False, True]
 
 
 def test_pipeline_passed_when_verifier_picks_multiple_options(tmp_path):
@@ -124,9 +128,10 @@ def test_pipeline_passed_when_verifier_picks_multiple_options(tmp_path):
 
         run(config=config, documents=[doc], hallucination_types=["numerical", "magnitude"])
 
-        mock_write.assert_called_once()
-        call_kwargs = mock_write.call_args[1]
-        assert call_kwargs["passed"] is True
+        assert mock_write.call_count == 3
+        option_calls = [c.kwargs for c in mock_write.call_args_list if c.kwargs.get("split") is None]
+        assert len(option_calls) == 2
+        assert all(c["passed"] is True for c in option_calls)
 
 
 def test_pipeline_failed_when_verifier_picks_nothing(tmp_path):
@@ -158,10 +163,12 @@ def test_pipeline_failed_when_verifier_picks_nothing(tmp_path):
 
         run(config=config, documents=[doc], hallucination_types=["numerical"])
 
-        mock_write.assert_called_once()
-        call_kwargs = mock_write.call_args[1]
-        # Verifier picked nothing → not fooled → failed
-        assert call_kwargs["passed"] is False
+        assert mock_write.call_count == 2
+        calls = [c.kwargs for c in mock_write.call_args_list]
+        original_call = next(c for c in calls if c.get("split") == "original")
+        assert original_call["record"]["source_document"] == "The penalty is $10,000."
+        option_call = next(c for c in calls if c.get("split") is None)
+        assert option_call["passed"] is False
 
 
 def test_pipeline_resumes_by_skipping_already_processed_documents(tmp_path):
@@ -172,10 +179,10 @@ def test_pipeline_resumes_by_skipping_already_processed_documents(tmp_path):
         reasoning_budget=8000,
     )
 
-    output_passed = tmp_path / "output" / "plan_b" / "passed"
-    output_passed.mkdir(parents=True)
+    output_original = tmp_path / "output" / "plan_b" / "original"
+    output_original.mkdir(parents=True)
     existing = {"plan": "B", "document_id": "doc_done"}
-    (output_passed / "plan_b_existing.jsonl").write_text(json.dumps(existing) + "\n", encoding="utf-8")
+    (output_original / "plan_b_existing.jsonl").write_text(json.dumps(existing) + "\n", encoding="utf-8")
 
     docs = [
         Document(id="doc_done", text="Already done", source_path="a.txt"),
@@ -204,8 +211,9 @@ def test_pipeline_resumes_by_skipping_already_processed_documents(tmp_path):
         # Only doc_new should be processed
         mock_gen.assert_called_once()
         assert mock_gen.call_args[1]["document_text"] == "Need processing"
-        mock_write.assert_called_once()
-        assert mock_write.call_args[1]["record"]["document_id"] == "doc_new"
+        assert mock_write.call_count == 2
+        for call in mock_write.call_args_list:
+            assert call.kwargs["record"]["document_id"] == "doc_new"
 
 
 def test_pipeline_stops_on_rate_limit_to_allow_resume(tmp_path):
