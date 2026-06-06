@@ -14,7 +14,7 @@ Usage:
 Options:
     --token     API token from courtlistener.com/profile/
                 (optional if COURTLISTENER_API_KEY is set)
-    --out-dir   Directory to save TXT files (default: ./scotus_opinions)
+    --out-dir   Directory to save TXT files (default: ./data/scotus_opinions)
     --from-date Start date YYYY-MM-DD (default: 2025-01-01)
     --to-date   End date   YYYY-MM-DD (default: 2026-12-31)
     --limit     Max number of opinions to download (default: unlimited)
@@ -506,7 +506,7 @@ def main():
         description="Download SCOTUS opinion PDFs from CourtListener (2025–2026)."
     )
     parser.add_argument("--token",     default=None, help="CourtListener API token (or use COURTLISTENER_API_KEY)")
-    parser.add_argument("--out-dir",   default="scotus_opinions", help="Output directory")
+    parser.add_argument("--out-dir",   default="data/scotus_opinions", help="Output directory")
     parser.add_argument("--from-date", default=date(2025, 1, 1), type=date.fromisoformat, help="Start date YYYY-MM-DD")
     parser.add_argument("--to-date",   default=date(2026, 12, 31), type=date.fromisoformat, help="End date YYYY-MM-DD")
     parser.add_argument("--limit",     type=int, default=None, help="Max opinions to download")
