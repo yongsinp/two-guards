@@ -6,40 +6,23 @@ from datetime import datetime, timezone
 from tqdm import tqdm
 
 from two_guards.core.config import Config
-from two_guards.core.llm import complete_json
 from two_guards.core.loader import Document
 from two_guards.core.writer import write_record
 from two_guards.multiple_choice.roles import run_generator, run_verifier
-from two_guards.multiple_choice.prompts import TRUE_OPTION_SYSTEM, TRUE_OPTION_USER
-
-
-def run_true_option(document_text: str, model: str, max_attempts: int = 3) -> dict:
-    """Generate one factually correct statement for a given document.
-
-    Args:
-        document_text: The source legal document.
-        model: litellm model string.
-        max_attempts: Maximum number of retry attempts for JSON parsing.
-
-    Returns:
-        Dict with key: true_option.
-    """
-    messages = [
-        {"role": "system", "content": TRUE_OPTION_SYSTEM},
-        {"role": "user", "content": TRUE_OPTION_USER.format(document_text=document_text)},
-    ]
-    return complete_json(model=model, messages=messages, max_attempts=max_attempts)
 
 
 def run(config: Config, documents: list[Document], hallucination_types: list[str]) -> None:
     """Run the multiple-choice pipeline over a list of documents.
 
     For each document, one generator per hallucination type produces a
-    fabricated statement option. These are assembled with one true statement
-    and shuffled. A Verifier then selects what it believes is the correct statement.
+    fabricated statement option. These are shuffled and presented to a
+    Verifier, which selects all statements it believes are correct (may be
+    none). Since all options are fabricated lies, the verifier is expected
+    to select nothing; any selection indicates a successful deception.
 
-    Records where the Verifier picks a fabricated option are written to
-    ``passed/``; records where it picks the true statement go to ``failed/``.
+    Records where the Verifier selects at least one option are written to
+    ``passed/`` (verifier was fooled); records where it selects nothing go
+    to ``failed/``.
 
     Args:
         config: Project configuration (model names, paths, thinking budget).
@@ -53,30 +36,20 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             result = run_generator(
                 document_text=doc.text,
                 hallucination_type=h_type,
+                all_hallucination_types=hallucination_types,
                 model=config.models.generator,
                 reasoning_budget=config.reasoning_budget,
                 max_attempts=config.max_attempts,
             )
             generated.append(result)
 
-        true_result = run_true_option(
-            document_text=doc.text,
-            model=config.models.verifier,
-            max_attempts=config.max_attempts,
-        )
-
         options = []
-        options.append({
-            "text": true_result["true_option"],
-            "is_true": True,
-            "hallucination_type": None,
-            "reasoning_tokens": None,
-        })
         for i, gen in enumerate(generated):
             options.append({
                 "text": gen["fabricated_option"],
                 "is_true": False,
                 "hallucination_type": hallucination_types[i],
+                "reasoning": gen.get("reasoning"),
                 "reasoning_tokens": gen.get("reasoning_tokens"),
             })
 
@@ -91,17 +64,16 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
             max_attempts=config.max_attempts,
         )
 
-        choice_idx = verifier_result["choice_index"]
-        verifier_correct = options[choice_idx]["is_true"] if 0 <= choice_idx < len(options) else False
-        passed = not verifier_correct
+        choice_indices = verifier_result.get("choice_indices", [])
+        # All options are lies; any selection means the verifier was fooled
+        passed = len(choice_indices) > 0
 
         record = {
             "plan": "B",
             "document_id": doc.id,
             "options": options,
             "verifier": {
-                "choice_index": choice_idx,
-                "correct": verifier_correct,
+                "choice_indices": choice_indices,
                 "reasoning_tokens": verifier_result.get("reasoning_tokens"),
             },
             "timestamp": datetime.now(timezone.utc).isoformat(),
