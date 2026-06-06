@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from two_guards.core.llm import complete, LLMJsonError, complete_json
+from two_guards.core.llm import RateLimitError, complete, LLMJsonError, complete_json
 
 
 def _mock_response(content: str, thinking_content: str | None = None):
@@ -91,6 +91,17 @@ def test_complete_with_thinking():
         assert result["reasoning_tokens"] == reasoning
         call_kwargs = mock_completion.call_args[1]
         assert call_kwargs["thinking"] == {"type": "enabled", "budget_tokens": 8000}
+
+
+def test_complete_raises_rate_limit_error_on_provider_exception():
+    with patch("litellm.completion") as mock_completion:
+        mock_completion.side_effect = Exception("litellm.RateLimitError: Too many requests")
+
+        with pytest.raises(RateLimitError):
+            complete(
+                model="anthropic/claude-sonnet-4-6",
+                messages=[{"role": "user", "content": "Question"}],
+            )
 
 
 def test_complete_extracts_reasoning_from_message_field():
@@ -186,3 +197,18 @@ def test_complete_json_returns_reasoning(mock_complete):
     )
 
     assert response == {"key": "value", "reasoning_tokens": "some reasoning"}
+
+
+@patch("two_guards.core.llm.complete")
+def test_complete_json_raises_rate_limit_error_when_signal_in_content(mock_complete):
+    mock_complete.return_value = {
+        "content": "litellm.RateLimitError: Too many requests",
+        "reasoning_tokens": None,
+    }
+
+    with pytest.raises(RateLimitError):
+        complete_json(
+            model="anthropic/claude-sonnet-4-6",
+            messages=[{"role": "user", "content": "hi"}],
+            max_attempts=3,
+        )

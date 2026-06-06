@@ -1,8 +1,11 @@
 import json
 from unittest.mock import patch
 
+import pytest
+
 from two_guards.core.loader import Document
 from two_guards.core.config import Config, ModelConfig
+from two_guards.core.llm import RateLimitError
 from two_guards.multiple_choice.roles import run_generator, run_verifier
 from two_guards.multiple_choice.pipeline import run
 
@@ -159,3 +162,70 @@ def test_pipeline_failed_when_verifier_picks_nothing(tmp_path):
         call_kwargs = mock_write.call_args[1]
         # Verifier picked nothing → not fooled → failed
         assert call_kwargs["passed"] is False
+
+
+def test_pipeline_resumes_by_skipping_already_processed_documents(tmp_path):
+    config = Config(
+        input_dir=str(tmp_path / "input"),
+        output_dir=str(tmp_path / "output"),
+        models=ModelConfig(),
+        reasoning_budget=8000,
+    )
+
+    output_passed = tmp_path / "output" / "plan_b" / "passed"
+    output_passed.mkdir(parents=True)
+    existing = {"plan": "B", "document_id": "doc_done"}
+    (output_passed / "plan_b_existing.jsonl").write_text(json.dumps(existing) + "\n", encoding="utf-8")
+
+    docs = [
+        Document(id="doc_done", text="Already done", source_path="a.txt"),
+        Document(id="doc_new", text="Need processing", source_path="b.txt"),
+    ]
+
+    gen_outputs = [
+        {
+            "fabricated_option": "Incorrect statement",
+            "reasoning": "Reasoning",
+            "reasoning_tokens": "tokens",
+        }
+    ]
+    verifier_output = {
+        "choice_indices": [],
+        "reasoning_tokens": "none selected",
+    }
+
+    with patch("two_guards.multiple_choice.pipeline.run_generator", side_effect=gen_outputs) as mock_gen, \
+         patch("two_guards.multiple_choice.pipeline.run_verifier", return_value=verifier_output), \
+         patch("two_guards.multiple_choice.pipeline.write_record") as mock_write, \
+         patch("random.shuffle"):
+
+        run(config=config, documents=docs, hallucination_types=["numerical"])
+
+        # Only doc_new should be processed
+        mock_gen.assert_called_once()
+        assert mock_gen.call_args[1]["document_text"] == "Need processing"
+        mock_write.assert_called_once()
+        assert mock_write.call_args[1]["record"]["document_id"] == "doc_new"
+
+
+def test_pipeline_stops_on_rate_limit_to_allow_resume(tmp_path):
+    config = Config(
+        input_dir=str(tmp_path / "input"),
+        output_dir=str(tmp_path / "output"),
+        models=ModelConfig(),
+        reasoning_budget=8000,
+    )
+    docs = [
+        Document(id="doc_1", text="First", source_path="1.txt"),
+        Document(id="doc_2", text="Second", source_path="2.txt"),
+    ]
+
+    with patch("two_guards.multiple_choice.pipeline.run_generator", side_effect=RateLimitError("limited")), \
+         patch("two_guards.multiple_choice.pipeline.write_record") as mock_write, \
+         patch("random.shuffle"):
+
+        with pytest.raises(RateLimitError):
+            run(config=config, documents=docs, hallucination_types=["numerical"])
+
+        # No partial write for the interrupted document
+        mock_write.assert_not_called()

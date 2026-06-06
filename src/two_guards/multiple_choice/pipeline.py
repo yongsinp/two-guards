@@ -1,14 +1,41 @@
 """Plan B pipeline: Multiple Choice (Generators → Assemble → Verifier)."""
 
+import json
 import random
 from datetime import datetime, timezone
+from pathlib import Path
 
 from tqdm import tqdm
 
 from two_guards.core.config import Config
 from two_guards.core.loader import Document
+from two_guards.core.llm import RateLimitError
 from two_guards.core.writer import write_record
 from two_guards.multiple_choice.roles import run_generator, run_verifier
+
+
+def _load_processed_document_ids(output_dir: str) -> set[str]:
+    """Collect already-written Plan B document IDs from passed/failed outputs."""
+    root = Path(output_dir) / "plan_b"
+    processed_ids: set[str] = set()
+    if not root.exists():
+        return processed_ids
+
+    for jsonl_file in root.glob("**/*.jsonl"):
+        with open(jsonl_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                doc_id = record.get("document_id")
+                if doc_id:
+                    processed_ids.add(doc_id)
+
+    return processed_ids
 
 
 def run(config: Config, documents: list[Document], hallucination_types: list[str]) -> None:
@@ -30,58 +57,67 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
         hallucination_types: List of hallucination type identifiers. One
             generator runs per type, producing one fabricated option each.
     """
+    processed_document_ids = _load_processed_document_ids(config.output_dir)
+
     for doc in tqdm(documents):
+        if doc.id in processed_document_ids:
+            continue
+
         generated = []
-        for h_type in hallucination_types:
-            result = run_generator(
+        try:
+            for h_type in hallucination_types:
+                result = run_generator(
+                    document_text=doc.text,
+                    hallucination_type=h_type,
+                    all_hallucination_types=hallucination_types,
+                    model=config.models.generator,
+                    reasoning_budget=config.reasoning_budget,
+                    max_attempts=config.max_attempts,
+                )
+                generated.append(result)
+
+            options = []
+            for i, gen in enumerate(generated):
+                options.append({
+                    "text": gen["fabricated_option"],
+                    "is_true": False,
+                    "hallucination_type": hallucination_types[i],
+                    "reasoning": gen.get("reasoning"),
+                    "reasoning_tokens": gen.get("reasoning_tokens"),
+                })
+
+            random.shuffle(options)
+
+            option_texts = [opt["text"] for opt in options]
+            verifier_result = run_verifier(
                 document_text=doc.text,
-                hallucination_type=h_type,
-                all_hallucination_types=hallucination_types,
-                model=config.models.generator,
+                options=option_texts,
+                model=config.models.verifier,
                 reasoning_budget=config.reasoning_budget,
                 max_attempts=config.max_attempts,
             )
-            generated.append(result)
 
-        options = []
-        for i, gen in enumerate(generated):
-            options.append({
-                "text": gen["fabricated_option"],
-                "is_true": False,
-                "hallucination_type": hallucination_types[i],
-                "reasoning": gen.get("reasoning"),
-                "reasoning_tokens": gen.get("reasoning_tokens"),
-            })
+            choice_indices = verifier_result.get("choice_indices", [])
+            # All options are lies; any selection means the verifier was fooled
+            passed = len(choice_indices) > 0
 
-        random.shuffle(options)
+            record = {
+                "plan": "B",
+                "document_id": doc.id,
+                "options": options,
+                "verifier": {
+                    "choice_indices": choice_indices,
+                    "reasoning_tokens": verifier_result.get("reasoning_tokens"),
+                },
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
 
-        option_texts = [opt["text"] for opt in options]
-        verifier_result = run_verifier(
-            document_text=doc.text,
-            options=option_texts,
-            model=config.models.verifier,
-            reasoning_budget=config.reasoning_budget,
-            max_attempts=config.max_attempts,
-        )
-
-        choice_indices = verifier_result.get("choice_indices", [])
-        # All options are lies; any selection means the verifier was fooled
-        passed = len(choice_indices) > 0
-
-        record = {
-            "plan": "B",
-            "document_id": doc.id,
-            "options": options,
-            "verifier": {
-                "choice_indices": choice_indices,
-                "reasoning_tokens": verifier_result.get("reasoning_tokens"),
-            },
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
-        write_record(
-            output_dir=config.output_dir,
-            plan="plan_b",
-            passed=passed,
-            record=record,
-        )
+            write_record(
+                output_dir=config.output_dir,
+                plan="plan_b",
+                passed=passed,
+                record=record,
+            )
+            processed_document_ids.add(doc.id)
+        except RateLimitError:
+            raise

@@ -5,6 +5,17 @@ import os
 
 import litellm
 
+_RATE_LIMIT_SIGNAL = "litellm.RateLimitError"
+
+
+class RateLimitError(Exception):
+    """Raised when provider/API indicates request rate limiting."""
+
+
+def _check_rate_limited(text: str) -> None:
+    if _RATE_LIMIT_SIGNAL in text:
+        raise RateLimitError(text[:300])
+
 
 class LLMJsonError(Exception):
     """Raised when the LLM fails to return valid JSON after all retry attempts."""
@@ -35,9 +46,14 @@ def complete(
     if thinking:
         kwargs["thinking"] = {"type": "enabled", "budget_tokens": reasoning_budget}
 
-    response = litellm.completion(**kwargs)
+    try:
+        response = litellm.completion(**kwargs)
+    except Exception as exc:
+        _check_rate_limited(str(exc))
+        raise
 
     content = response.choices[0].message.content or ""
+    _check_rate_limited(content)
     reasoning = _extract_reasoning_tokens(response)
 
     return {
@@ -105,6 +121,7 @@ def complete_json(
             reasoning_budget=reasoning_budget,
         )
         last_content = response["content"]
+        _check_rate_limited(last_content)  # defensive redundancy
         try:
             last_content = _get_outermost_dict(last_content)
             parsed = json.loads(last_content)
