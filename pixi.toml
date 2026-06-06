@@ -26,6 +26,7 @@ tiktoken = "*"
 
 [feature.dev.tasks]
 test = "python -m pytest tests/ -v"
+download-data = "python -m two_guards.preprocessing.download_files"
 
 [environments]
 default = { features = [], solve-group = "default" }

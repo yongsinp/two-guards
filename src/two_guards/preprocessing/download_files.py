@@ -9,10 +9,11 @@ and converts each PDF to a clean .txt file with:
   - Footnotes collected and appended at the end
 
 Usage:
-    python download_files.py --token YOUR_API_TOKEN [options]
+    python -m two_guards.preprocessing.download_files [options]
 
 Options:
-    --token     API token from courtlistener.com/profile/  (required)
+    --token     API token from courtlistener.com/profile/
+                (optional if COURTLISTENER_API_KEY is set)
     --out-dir   Directory to save TXT files (default: ./scotus_opinions)
     --from-date Start date YYYY-MM-DD (default: 2025-01-01)
     --to-date   End date   YYYY-MM-DD (default: 2026-12-31)
@@ -23,9 +24,11 @@ Options:
 import argparse
 import csv
 import io
+import os
 import re
 import sys
 import time
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -458,6 +461,42 @@ def fetch_and_convert(session: requests.Session, url: str, pdf_dest: Path, txt_d
 
     return True
 
+
+def load_dotenv_file(path: str = ".env") -> None:
+    """Load simple KEY=VALUE pairs from a .env file into os.environ.
+
+    Existing environment variables are not overridden.
+    """
+    env_path = Path(path)
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+def resolve_token(cli_token: str | None) -> str:
+    """Resolve CourtListener API token from CLI arg or environment."""
+    token = cli_token or os.getenv("COURTLISTENER_API_KEY")
+    if token:
+        return token
+    raise SystemExit(
+        "CourtListener API token is required. Set COURTLISTENER_API_KEY or pass --token."
+    )
+
+
+def validate_date_span(from_date: date, to_date: date) -> None:
+    """Ensure the date span is valid."""
+    if from_date > to_date:
+        raise SystemExit("--from-date must be earlier than or equal to --to-date")
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -466,18 +505,24 @@ def main():
     parser = argparse.ArgumentParser(
         description="Download SCOTUS opinion PDFs from CourtListener (2025–2026)."
     )
-    parser.add_argument("--token",     required=True, help="CourtListener API token")
+    parser.add_argument("--token",     default=None, help="CourtListener API token (or use COURTLISTENER_API_KEY)")
     parser.add_argument("--out-dir",   default="scotus_opinions", help="Output directory")
-    parser.add_argument("--from-date", default="2025-01-01",  help="Start date YYYY-MM-DD")
-    parser.add_argument("--to-date",   default="2025-01-31",  help="End date YYYY-MM-DD")
+    parser.add_argument("--from-date", default=date(2025, 1, 1), type=date.fromisoformat, help="Start date YYYY-MM-DD")
+    parser.add_argument("--to-date",   default=date(2026, 12, 31), type=date.fromisoformat, help="End date YYYY-MM-DD")
     parser.add_argument("--limit",     type=int, default=None, help="Max opinions to download")
     parser.add_argument("--dry-run",   action="store_true",    help="List only, no downloads")
     args = parser.parse_args()
 
+    load_dotenv_file()
+    token = resolve_token(args.token)
+    validate_date_span(args.from_date, args.to_date)
+    from_date = args.from_date.isoformat()
+    to_date = args.to_date.isoformat()
+
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    session = build_session(args.token)
+    session = build_session(token)
 
     manifest_path  = out_dir / "manifest.csv"
     manifest_fields = [
@@ -488,7 +533,7 @@ def main():
 
     print(f"\n{'='*60}")
     print(f"  CourtListener SCOTUS Downloader")
-    print(f"  Date range : {args.from_date} → {args.to_date}")
+    print(f"  Date range : {from_date} → {to_date}")
     print(f"  Output dir : {out_dir.resolve()}")
     print(f"  Dry run    : {args.dry_run}")
     print(f"{'='*60}\n")
@@ -503,7 +548,7 @@ def main():
 
         print("Searching for SCOTUS opinions …\n")
 
-        for opinion in search_opinions(session, args.from_date, args.to_date):
+        for opinion in search_opinions(session, from_date, to_date):
             if args.limit and (downloaded + skipped + no_pdf) >= args.limit:
                 print(f"\nReached --limit of {args.limit}. Stopping.")
                 break
@@ -593,4 +638,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
