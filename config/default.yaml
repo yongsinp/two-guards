@@ -3,7 +3,7 @@ output_dir: "data"
 
 models:
   liar: "anthropic/claude-sonnet-4-6"
-  verifier: "anthropic/claude-sonnet-4-6"
+  verifier: "anthropic/claude-haiku-4-5-20251001"
   generator: "anthropic/claude-sonnet-4-6"
   summarizer: "anthropic/claude-sonnet-4-6"
   tamperer: "anthropic/claude-sonnet-4-6"
