@@ -386,7 +386,7 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
 def assemble_output(body: str, footnotes: list[str]) -> str:
     """Combine body + footnotes section into the final .txt content."""
     parts = [body]
-   if footnotes:
+    if footnotes:
        parts.append("\n" + "=" * 72)
        parts.append("FOOTNOTES")
        parts.append("=" * 72 + "\n")
