@@ -12,7 +12,7 @@ from two_guards.core.writer import write_record
 
 # temporary thresholds for now
 MAX_UNCAUGHT_LIES: int = 3
-MAX_TOTAL_LIES: int = 50
+MAX_TOTAL_CLAIMS: int = 100
 
 
 def run(config: Config, documents: list[Document]) -> None:
@@ -47,7 +47,7 @@ def run(config: Config, documents: list[Document]) -> None:
         last_verifier_response: str | None = None
         lies_so_far: list[str] = []
 
-        while num_uncaught_lies < MAX_UNCAUGHT_LIES and total_lies < MAX_TOTAL_LIES:
+        while num_uncaught_lies < MAX_UNCAUGHT_LIES and total_claims < MAX_TOTAL_CLAIMS:
             truth_flag = random.choices([True, False], weights=[0.4, 0.6])[0]
             liar_result = run_liar(
                 document_text=doc.text,
@@ -70,16 +70,17 @@ def run(config: Config, documents: list[Document]) -> None:
             )
 
             total_claims += 1
-            lies_so_far.append(liar_result["false_claim"])
+            if liar_result["false_claim"]:
+                lies_so_far.append(liar_result["false_claim"])
             last_verifier_response = verifier_result["response"]
-            was_lie_uncaught_this_turn = liar_result["false_claim"] and not verifier_result.get("attempted_correction")
+            was_lie_uncaught_this_turn = not liar_result["truth_flag"] and not verifier_result.get("attempted_correction")
             if was_lie_uncaught_this_turn:
                 num_uncaught_lies += 1
 
             turn: dict = {
-                "turn_index": total_lies - 1,
+                "turn_index": total_claims - 1,
                 "liar": {
-                    "claim": liar_result.get("claim"),
+                    "response": liar_result.get("response"),
                     "truth_flag": liar_result.get("truth_flag"),
                     "hallucination_type": liar_result.get("hallucination_type"),
                     "false_claim": liar_result.get("false_claim"),
@@ -107,19 +108,19 @@ def run(config: Config, documents: list[Document]) -> None:
                     )
                     judge_result["skipped"] = False
 
-                if judge_result is None:
-                    judge_result = {
-                        "skipped": True,
-                        "verifier_correctly_identified": False,
-                        "did_liar_hallucinate": False,  # this is actually unknown
-                        "undeclared_hallucinations": [],
-                        "reasoning": (
-                            "Verifier did not attempt a correction."
-                            if not liar_result["truth_flag"]
-                            else "Liar told truth; no false claim to identify."
-                        ),
-                        "reasoning_tokens": None,
-                    }
+            if judge_result is None:
+                judge_result = {
+                    "skipped": True,
+                    "verifier_correctly_identified": True, # this is actually unknown
+                    "did_liar_hallucinate": False,  # this is actually unknown
+                    "undeclared_hallucinations": [],
+                    "reasoning": (
+                        "Verifier did not attempt a correction."
+                        if not liar_result["truth_flag"]
+                        else "Liar told truth; no false claim to identify."
+                    ),
+                    "reasoning_tokens": None,
+                }
 
             turn["judge"] = judge_result
             conversation.append(turn)
@@ -129,7 +130,7 @@ def run(config: Config, documents: list[Document]) -> None:
         passed_turns, failed_turns = [], []
 
         for turn in conversation:
-            if turn["judge"]["verifier_correctly_identified"]:
+            if not turn["judge"]["skipped"] and turn["judge"]["verifier_correctly_identified"]:
                 lies_caught += 1
             if turn["judge"]["did_liar_hallucinate"]:
                 undeclared_hallucination_turns += 1

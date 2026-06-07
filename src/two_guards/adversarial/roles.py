@@ -58,6 +58,7 @@ def run_liar(
     else:
         user_content = LIAR_USER_CONTINUE.format(
             verifier_response=prior_verifier_response,
+            document_text=document_text,
             truth_flag=str(truth_flag).lower(),
             hallucination_info=hallucination_info,
             lies_so_far=json.dumps(lies_so_far, ensure_ascii=False),
@@ -142,13 +143,12 @@ def run_judge(
     """
 
     turn_info_for_judge = {
-        "liar_claim": turn_to_assess["liar"]["claim"],
+        "liar_response": turn_to_assess["liar"]["response"],
         "liar_truth_flag": turn_to_assess["liar"]["truth_flag"],
         "liar_false_claim": turn_to_assess["liar"]["false_claim"],
         "verifier_attempted_correction": turn_to_assess["verifier"]["attempted_correction"],
         "verifier_targeted_claim": turn_to_assess["verifier"]["targeted_claim"],
         "verifier_response": turn_to_assess["verifier"]["response"],
-        "was_lie_uncaught_this_turn": turn_to_assess["was_lie_uncaught_this_turn"],
     }
 
     messages = [
