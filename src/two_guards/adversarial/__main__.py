@@ -1,8 +1,8 @@
 """Entry point: python -m two_guards.adversarial."""
 
+from two_guards.adversarial.pipeline import run
 from two_guards.core.config import load_config
 from two_guards.core.loader import load_documents
-from two_guards.adversarial.pipeline import run
 
 
 def main():
