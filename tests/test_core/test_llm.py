@@ -93,6 +93,30 @@ def test_complete_with_thinking():
         assert call_kwargs["thinking"] == {"type": "enabled", "budget_tokens": 8000}
 
 
+def test_complete_retries_without_thinking_on_unsupported_param_error():
+    with patch("litellm.completion") as mock_completion:
+        mock_completion.side_effect = [
+            Exception(
+                "litellm.UnsupportedParamsError: anthropic does not support parameters: ['thinking']"
+            ),
+            _mock_response("ok without thinking"),
+        ]
+
+        result = complete(
+            model="openai/gpt-5.4-mini",
+            messages=[{"role": "user", "content": "Question"}],
+            thinking=True,
+            reasoning_budget=8000,
+        )
+
+        assert result["content"] == "ok without thinking"
+        assert mock_completion.call_count == 2
+        first_call_kwargs = mock_completion.call_args_list[0].kwargs
+        second_call_kwargs = mock_completion.call_args_list[1].kwargs
+        assert "thinking" in first_call_kwargs
+        assert "thinking" not in second_call_kwargs
+
+
 def test_complete_raises_rate_limit_error_on_provider_exception():
     with patch("litellm.completion") as mock_completion:
         mock_completion.side_effect = Exception("litellm.RateLimitError: Too many requests")

@@ -17,6 +17,12 @@ def _check_rate_limited(text: str) -> None:
         raise RateLimitError(text[:300])
 
 
+def _is_unsupported_thinking_error(text: str) -> bool:
+    """Detect provider/model errors for unsupported thinking parameter."""
+    lowered = text.lower()
+    return "unsupportedparamserror" in lowered and "thinking" in lowered
+
+
 class LLMJsonError(Exception):
     """Raised when the LLM fails to return valid JSON after all retry attempts."""
 
@@ -50,7 +56,11 @@ def complete(
         response = litellm.completion(**kwargs)
     except Exception as exc:
         _check_rate_limited(str(exc))
-        raise
+        if thinking and _is_unsupported_thinking_error(str(exc)):
+            kwargs.pop("thinking", None)
+            response = litellm.completion(**kwargs)
+        else:
+            raise
 
     content = response.choices[0].message.content or ""
     _check_rate_limited(content)
