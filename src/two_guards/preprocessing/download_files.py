@@ -380,8 +380,15 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
 
     text = _EVEN_PAGE_HEADERS.sub("", text)
 
-    return text, cleaned_footnotes
+    # 9. remove watermark
+    text = text.replace("Proof Pending Publication","")
 
+    # 10. remove Reporter's Note from end of document
+    pattern = r"Reporter[’']s Note"
+    # split at the pattern and take the first part
+    text = re.split(pattern, text)[0]
+    
+    return text, cleaned_footnotes
 
 def assemble_output(body: str, footnotes: list[str]) -> str:
     """Combine body + footnotes section into the final .txt content."""
