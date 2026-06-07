@@ -41,7 +41,7 @@ def _load_processed_document_ids(output_dir: str) -> set[str]:
 def run(config: Config, documents: list[Document], hallucination_types: list[str]) -> None:
     """Run the multiple-choice pipeline over a list of documents.
 
-    For each document, one generator per hallucination type produces a
+    For each document, one liar call per hallucination type produces a
     fabricated statement option. These are shuffled and presented to a
     Verifier, which selects all statements it believes are correct (may be
     none). Since all options are fabricated lies, the verifier is expected
@@ -55,7 +55,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
         config: Project configuration (model names, paths, thinking budget).
         documents: Source documents to process.
         hallucination_types: List of hallucination type identifiers. One
-            generator runs per type, producing one fabricated option each.
+            liar runs per type, producing one fabricated option each.
     """
     processed_document_ids = _load_processed_document_ids(config.output_dir)
 
@@ -70,7 +70,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
                     document_text=doc.text,
                     hallucination_type=h_type,
                     all_hallucination_types=hallucination_types,
-                    model=config.models.generator,
+                    model=config.models.liar,
                     reasoning_budget=config.reasoning_budget,
                     max_attempts=config.max_attempts,
                 )
