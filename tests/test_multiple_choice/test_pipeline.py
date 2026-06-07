@@ -6,11 +6,11 @@ import pytest
 from two_guards.core.loader import Document
 from two_guards.core.config import Config, ModelConfig
 from two_guards.core.llm import RateLimitError
-from two_guards.multiple_choice.roles import run_generator, run_verifier
+from two_guards.multiple_choice.roles import run_liar, run_verifier
 from two_guards.multiple_choice.pipeline import run
 
 
-def test_run_generator_returns_parsed_output():
+def test_run_liar_returns_parsed_output():
     gen_dict = {
         "fabricated_option": "The statute of limitations is 5 years.",
         "reasoning": "I changed the limitation period while keeping legal phrasing.",
@@ -18,7 +18,7 @@ def test_run_generator_returns_parsed_output():
     with patch("two_guards.multiple_choice.roles.complete_json") as mock:
         gen_dict["reasoning_tokens"] = "I changed 3 years to 5 years."
         mock.return_value = gen_dict
-        result = run_generator(
+        result = run_liar(
             document_text="The statute of limitations is 3 years.",
             hallucination_type="numerical_error",
             all_hallucination_types=["Temporal"],
@@ -77,7 +77,7 @@ def test_pipeline_passed_when_verifier_picks_any_option(tmp_path):
         "reasoning_tokens": "Index 1 looks plausible",
     }
 
-    with patch("two_guards.multiple_choice.pipeline.run_generator", side_effect=gen_outputs), \
+    with patch("two_guards.multiple_choice.pipeline.run_liar", side_effect=gen_outputs), \
          patch("two_guards.multiple_choice.pipeline.run_verifier", return_value=verifier_output), \
          patch("two_guards.multiple_choice.pipeline.write_record") as mock_write, \
          patch("random.shuffle"):
@@ -121,7 +121,7 @@ def test_pipeline_passed_when_verifier_picks_multiple_options(tmp_path):
         "reasoning_tokens": "Both look plausible",
     }
 
-    with patch("two_guards.multiple_choice.pipeline.run_generator", side_effect=gen_outputs), \
+    with patch("two_guards.multiple_choice.pipeline.run_liar", side_effect=gen_outputs), \
          patch("two_guards.multiple_choice.pipeline.run_verifier", return_value=verifier_output), \
          patch("two_guards.multiple_choice.pipeline.write_record") as mock_write, \
          patch("random.shuffle"):
@@ -156,7 +156,7 @@ def test_pipeline_failed_when_verifier_picks_nothing(tmp_path):
         "reasoning_tokens": "None of these match the document",
     }
 
-    with patch("two_guards.multiple_choice.pipeline.run_generator", side_effect=gen_outputs), \
+    with patch("two_guards.multiple_choice.pipeline.run_liar", side_effect=gen_outputs), \
          patch("two_guards.multiple_choice.pipeline.run_verifier", return_value=verifier_output), \
          patch("two_guards.multiple_choice.pipeline.write_record") as mock_write, \
          patch("random.shuffle"):
@@ -201,7 +201,7 @@ def test_pipeline_resumes_by_skipping_already_processed_documents(tmp_path):
         "reasoning_tokens": "none selected",
     }
 
-    with patch("two_guards.multiple_choice.pipeline.run_generator", side_effect=gen_outputs) as mock_gen, \
+    with patch("two_guards.multiple_choice.pipeline.run_liar", side_effect=gen_outputs) as mock_gen, \
          patch("two_guards.multiple_choice.pipeline.run_verifier", return_value=verifier_output), \
          patch("two_guards.multiple_choice.pipeline.write_record") as mock_write, \
          patch("random.shuffle"):
@@ -228,7 +228,7 @@ def test_pipeline_stops_on_rate_limit_to_allow_resume(tmp_path):
         Document(id="doc_2", text="Second", source_path="2.txt"),
     ]
 
-    with patch("two_guards.multiple_choice.pipeline.run_generator", side_effect=RateLimitError("limited")), \
+    with patch("two_guards.multiple_choice.pipeline.run_liar", side_effect=RateLimitError("limited")), \
          patch("two_guards.multiple_choice.pipeline.write_record") as mock_write, \
          patch("random.shuffle"):
 

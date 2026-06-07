@@ -11,7 +11,7 @@ from two_guards.core.config import Config
 from two_guards.core.loader import Document
 from two_guards.core.llm import RateLimitError
 from two_guards.core.writer import write_record
-from two_guards.multiple_choice.roles import run_generator, run_verifier
+from two_guards.multiple_choice.roles import run_liar, run_verifier
 
 
 def _load_processed_document_ids(output_dir: str) -> set[str]:
@@ -66,7 +66,7 @@ def run(config: Config, documents: list[Document], hallucination_types: list[str
         generated = []
         try:
             for h_type in hallucination_types:
-                result = run_generator(
+                result = run_liar(
                     document_text=doc.text,
                     hallucination_type=h_type,
                     all_hallucination_types=hallucination_types,

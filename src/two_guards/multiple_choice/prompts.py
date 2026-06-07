@@ -1,6 +1,6 @@
 """Prompt templates for Plan B (Multiple Choice) roles."""
 
-GENERATOR_SYSTEM = """You are an expert at crafting plausible but incorrect legal statements.
+LIAR_SYSTEM = """You are an expert at crafting plausible but incorrect legal statements.
 You will be given a legal document and a lie type.
 
 Your task is to generate ONE statement that is subtly incorrect according
@@ -25,7 +25,7 @@ The fabricated_option must be a plausible but INCORRECT statement about the docu
 Make it subtle — the error should require careful comparison with the source.
 The reasoning must be concise and describe the manipulation strategy."""
 
-GENERATOR_USER = """Target lie type: {hallucination_type}
+LIAR_USER = """Target lie type: {hallucination_type}
 
 Generate one plausible but incorrect statement about the document above."""
 

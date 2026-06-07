@@ -2,14 +2,14 @@
 
 from two_guards.core.llm import complete_json
 from two_guards.multiple_choice.prompts import (
-    GENERATOR_SYSTEM,
-    GENERATOR_USER,
+    LIAR_SYSTEM,
+    LIAR_USER,
     VERIFIER_SYSTEM,
     VERIFIER_USER,
 )
 
 
-def run_generator(
+def run_liar(
     document_text: str,
     hallucination_type: str,
     all_hallucination_types: list[str],
@@ -39,7 +39,10 @@ def run_generator(
         {
             "role": "system",
             "content": [
-                {"type": "text", "text": GENERATOR_SYSTEM},
+                {
+                    "type": "text", "text": LIAR_SYSTEM,
+                    "cache_control": {"type": "ephemeral"},
+                 },
                 {
                     "type": "text",
                     "text": f"Source legal document:\n\n{document_text}",
@@ -54,7 +57,7 @@ def run_generator(
                 },
             ],
         },
-        {"role": "user", "content": GENERATOR_USER.format(
+        {"role": "user", "content": LIAR_USER.format(
             hallucination_type=hallucination_type,
         )},
     ]
