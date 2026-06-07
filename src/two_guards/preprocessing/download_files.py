@@ -336,7 +336,6 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
     text = _DIVIDER.sub("", text)
     text = _remove_page_headers(text)
 
-
     # 2. Extract footnotes (delimited by —— lines) before other cleaning
     #    so we don't accidentally mangle them.
     text, footnotes = _extract_footnotes(text)
@@ -358,16 +357,13 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
     text = re.sub(r"(?<=\w)-\s*\n\s*(?=\w)", "", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
 
-    #
     # 6. Join soft line-breaks within paragraphs (single newline → space),
     #    but preserve intentional paragraph breaks (double newline).
     #text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
     text = re.sub(r"\n+", " ", text)
 
-    #
     # 7. Tidy multiple spaces
     text = re.sub(r" {2,}", " ", text)
-    #
 
     # 7.5 clean footnotes
     cleaned_footnotes = []
@@ -384,21 +380,20 @@ def clean_scotus_text(raw: str) -> tuple[str, list[str]]:
 
     text = _EVEN_PAGE_HEADERS.sub("", text)
 
-
     return text, cleaned_footnotes
 
 
 def assemble_output(body: str, footnotes: list[str]) -> str:
     """Combine body + footnotes section into the final .txt content."""
     parts = [body]
- #   if footnotes:
- #       parts.append("\n" + "=" * 72)
- #       parts.append("FOOTNOTES")
- #       parts.append("=" * 72 + "\n")
- #       for fn in footnotes:
- #           # Ensure each footnote is separated by a blank line
- #           parts.append(fn.strip())
- #           parts.append("")
+   if footnotes:
+       parts.append("\n" + "=" * 72)
+       parts.append("FOOTNOTES")
+       parts.append("=" * 72 + "\n")
+       for fn in footnotes:
+           # Ensure each footnote is separated by a blank line
+           parts.append(fn.strip())
+           parts.append("")
     return "\n".join(parts)
 
 # ---------------------------------------------------------------------------
