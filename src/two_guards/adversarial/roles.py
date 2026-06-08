@@ -44,7 +44,6 @@ def run_liar(
         Dict with keys: response, truth_flag, false_claim (or None),
         hallucination_type, reasoning_tokens.
     """
-
     hallucination_info = "" if truth_flag else LIAR_USER_HALLUCINATION_INFO.format(
         hallucination_type=hallucination_type.lower(),
     )
@@ -65,10 +64,15 @@ def run_liar(
         )
 
     messages = [
-        {"role": "system", "content": LIAR_SYSTEM.format(
-            hallucination_types='/'.join(hallucination_types.keys()).lower(),
-            hallucination_types_info=str(hallucination_types)
-        )},
+        {"role": "system", "content": [
+            {"type": "text",
+             "text": LIAR_SYSTEM.format(
+                 hallucination_types='/'.join(hallucination_types.keys()).lower(),
+                 hallucination_types_info=str(hallucination_types)
+             ),
+             "cache_control": {"type": "ephemeral"}
+             }
+        ]},
         {"role": "user", "content": user_content},
     ]
 
@@ -103,7 +107,8 @@ def run_verifier(
         response, reasoning_tokens.
     """
     messages = [
-        {"role": "system", "content": VERIFIER_SYSTEM},
+        {"role": "system",
+         "content": [{"type": "text", "text": VERIFIER_SYSTEM, "cache_control": {"type": "ephemeral"}}]},
         {"role": "user", "content": VERIFIER_USER.format(
             document_text=document_text,
             liar_response=liar_response,
@@ -152,7 +157,7 @@ def run_judge(
     }
 
     messages = [
-        {"role": "system", "content": JUDGE_SYSTEM},
+        {"role": "system", "content": [{"type": "text", "text": JUDGE_SYSTEM, "cache_control": {"type": "ephemeral"}}]},
         {"role": "user", "content": JUDGE_USER.format(
             document_text=document_text,
             turn_json=json.dumps(turn_info_for_judge),

@@ -11,8 +11,8 @@ from two_guards.core.loader import Document
 from two_guards.core.writer import write_record
 
 # temporary thresholds for now
-MAX_UNCAUGHT_LIES: int = 3
-MAX_TOTAL_CLAIMS: int = 100
+MAX_UNCAUGHT_LIES: int = 10
+MAX_TOTAL_CLAIMS: int = 30
 
 
 def run(config: Config, documents: list[Document]) -> None:
@@ -48,7 +48,7 @@ def run(config: Config, documents: list[Document]) -> None:
         lies_so_far: list[str] = []
 
         while num_uncaught_lies < MAX_UNCAUGHT_LIES and total_claims < MAX_TOTAL_CLAIMS:
-            truth_flag = random.choices([True, False], weights=[0.4, 0.6])[0]
+            truth_flag = random.choices([True, False], weights=[0.2, 0.8])[0]
             liar_result = run_liar(
                 document_text=doc.text,
                 truth_flag=truth_flag,
